@@ -1,13 +1,9 @@
-use std::{io::Read, path::Path};
-
-use egui::Color32;
-
-mod audio_in;
+mod audio;
 
 #[derive(serde::Deserialize, serde::Serialize, Default)]
 #[serde(default)]
 pub struct TemplateApp {
-    audio_input: audio_in::AudioInput,
+    pub audio: audio::Audio,
 }
 
 impl TemplateApp {
@@ -29,26 +25,13 @@ impl eframe::App for TemplateApp {
 
     /// Called each time the UI needs repainting, which may be many times per second.
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        egui::SidePanel::left("Configuration")
-            .show(ctx, |ui| {
-                self.ui_audio_in(ui);
-            });
+        egui::SidePanel::left("Configuration").show(ctx, |ui| {
+            self.audio.ui(ui);
+            ui.separator();
+        });
 
         egui::CentralPanel::default().show(ctx, |ui| {
-            // The central panel the region left after adding TopPanel's and SidePanel's
             ui.heading("eframe template");
-
-            // ui.horizontal(|ui| {
-            //     ui.label("Write something: ");
-            //     ui.text_edit_singleline(&mut self.label);
-            // });
-
-            // ui.add(egui::Slider::new(&mut self.value, 0.0..=10.0).text("value"));
-            // if ui.button("Increment").clicked() {
-            //     self.value += 1.0;
-            // }
-
-            ui.separator();
 
             ui.add(egui::github_link_file!(
                 "https://github.com/emilk/eframe_template/blob/main/",
