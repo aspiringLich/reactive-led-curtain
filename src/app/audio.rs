@@ -1,26 +1,25 @@
-use std::{
-    fs::File,
-    io::BufReader,
-    path::Path, time::Duration,
-};
+use std::{fs::File, io::BufReader, path::Path, thread::{self}, time::Duration};
 
 use egui::{Button, Slider, TextEdit, Ui};
-use rodio::{source::TrackPosition, Decoder, Source};
+use rodio::{Decoder, OutputStream, Sink, Source, buffer::SamplesBuffer, source::TrackPosition};
 
-use super::TemplateApp;
+type AudioDecoder = TrackPosition<Decoder<BufReader<File>>>;
 
 #[derive(serde::Deserialize, serde::Serialize, Default)]
 pub struct Audio {
     wav_path: String,
-    #[serde(skip)]
-    decoder: Option<TrackPosition<Decoder<BufReader<File>>>>,
     playing: bool,
+
+    #[serde(skip)]
+    decoder: Option<AudioDecoder>,
+    #[serde(skip)]
+    sink: Option<(Sink, OutputStream)>,
 }
 
 // #[derive(serde::Serialize, serde::Deserialize, Default)]
 // #[serde(default)]
 // pub struct AudioSource {
-//     
+//
 //     samples_read: u32,
 //     samples: u32,
 //     playing: bool,
@@ -72,15 +71,15 @@ impl Audio {
             ui.horizontal(|ui| {
                 let text = if self.playing { "⏸" } else { "⏵" };
                 let play_toggle = ui.button(text);
-                
+
                 let mut total_duration = decoder.total_duration().unwrap().as_secs_f32();
 
                 if play_toggle.clicked() {
                     self.playing = !self.playing;
                 }
-                
+
                 let mut progress = decoder.get_pos().as_secs_f32();
-                if total_duration < progress { 
+                if total_duration < progress {
                     total_duration = progress;
                 }
                 let slider: egui::Response =
@@ -91,14 +90,8 @@ impl Audio {
                     decoder.try_seek(Duration::from_secs_f32(progress)).unwrap();
                 }
 
-                let time = |s: f32| {
-                    format!("{}:{:02}", s as u32 / 60, s as u32 % 60)
-                };
-                ui.monospace(format!(
-                    "{} / {}",
-                    time(progress),
-                    time(total_duration)
-                ));
+                let time = |s: f32| format!("{}:{:02}", s as u32 / 60, s as u32 % 60);
+                ui.monospace(format!("{} / {}", time(progress), time(total_duration)));
             });
         } else {
             ui.horizontal(|ui| {
@@ -106,6 +99,32 @@ impl Audio {
                 ui.add_enabled(false, Slider::new(&mut 0.0, 0.0..=1.0).show_value(false));
                 ui.monospace("?:?? / ?:??");
             });
+        }
+
+        if self.playing
+            && let Some(decoder) = &mut self.decoder
+        {
+            if self.sink.is_none() {
+                let stream = rodio::OutputStreamBuilder::open_default_stream().unwrap();
+                self.sink = Some((Sink::connect_new(&stream.mixer()), stream));
+            }
+            if let Some((sink, _)) = &self.sink {
+                if sink.len() <= 1 {
+                    let samples = decoder
+                        .take_duration(Duration::from_secs_f32(1.0 / 6.0))
+                        .collect::<Vec<_>>();
+                    let buffer = SamplesBuffer::new(
+                        decoder.channels(),
+                        decoder.sample_rate(),
+                        samples
+                    );
+                    
+                    sink.append(buffer);
+                    sink.play();
+                }
+            }
+        } else if let Some((sink, _)) = &self.sink {
+            sink.pause();
         }
     }
 }
