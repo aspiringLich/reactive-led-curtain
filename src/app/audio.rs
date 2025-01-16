@@ -16,42 +16,11 @@ pub struct Audio {
     sink: Option<(Sink, OutputStream)>,
 }
 
-// #[derive(serde::Serialize, serde::Deserialize, Default)]
-// #[serde(default)]
-// pub struct AudioSource {
-//
-//     samples_read: u32,
-//     samples: u32,
-//     playing: bool,
-// }
-
-// impl AudioSource {
-//     pub fn new(decoder: Decoder<BufReader<File>>) -> Self {
-//         Self {
-//             samples: decoder,
-//             decoder,
-//             samples_read: 0,
-//             playing: false,
-//         }
-//     }
-
-//     pub fn read_samples(&mut self, n: u32) -> Vec<i16> {
-//         let v = self
-//             .decoder
-//             .samples()
-//             .take(n as usize)
-//             .map_while(|r| r.ok())
-//             .collect::<Vec<_>>();
-//         self.samples_read += v.len() as u32;
-//         v
-//     }
-// }
-
 impl Audio {
     pub fn ui(&mut self, ui: &mut Ui) {
         ui.heading("Audio");
         ui.horizontal(|ui| {
-            ui.label(".wav path");
+            ui.label("filepath");
             ui.add(TextEdit::singleline(&mut self.wav_path));
         });
 
@@ -86,8 +55,8 @@ impl Audio {
                     ui.add(Slider::new(&mut progress, 0.0..=total_duration).show_value(false));
 
                 if slider.changed() {
-                    self.playing = false;
                     decoder.try_seek(Duration::from_secs_f32(progress)).unwrap();
+                    self.sink.as_mut().map(|s| s.0.clear());
                 }
 
                 let time = |s: f32| format!("{}:{:02}", s as u32 / 60, s as u32 % 60);
@@ -109,9 +78,9 @@ impl Audio {
                 self.sink = Some((Sink::connect_new(&stream.mixer()), stream));
             }
             if let Some((sink, _)) = &self.sink {
-                if sink.len() <= 1 {
+                while sink.len() < 30 {
                     let samples = decoder
-                        .take_duration(Duration::from_secs_f32(1.0 / 6.0))
+                        .take_duration(Duration::from_secs_f32(1.0 / 60.0))
                         .collect::<Vec<_>>();
                     let buffer = SamplesBuffer::new(
                         decoder.channels(),
