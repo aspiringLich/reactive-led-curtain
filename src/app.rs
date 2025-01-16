@@ -42,8 +42,10 @@ impl eframe::App for TemplateApp {
                 egui::warn_if_debug_build(ui);
             });
         });
-        
-        ctx.request_repaint();
+
+        if self.audio.playing {
+            ctx.request_repaint();
+        }
     }
 }
 

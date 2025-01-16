@@ -1,4 +1,4 @@
-use std::{fs::File, io::BufReader, path::Path, thread::{self}, time::Duration};
+use std::{fs::File, io::BufReader, path::Path, time::Duration};
 
 use egui::{Button, Slider, TextEdit, Ui};
 use rodio::{Decoder, OutputStream, Sink, Source, buffer::SamplesBuffer, source::TrackPosition};
@@ -8,7 +8,8 @@ type AudioDecoder = TrackPosition<Decoder<BufReader<File>>>;
 #[derive(serde::Deserialize, serde::Serialize, Default)]
 pub struct Audio {
     wav_path: String,
-    playing: bool,
+    pub playing: bool,
+    progress: f32,
 
     #[serde(skip)]
     decoder: Option<AudioDecoder>,
@@ -31,6 +32,11 @@ impl Audio {
         {
             if self.decoder.is_none() {
                 self.decoder = Some(decoder.track_position());
+                if self.progress != Default::default() {
+                    self.decoder
+                        .as_mut()
+                        .map(|d| d.try_seek(Duration::from_secs_f32(self.progress)));
+                }
             }
         } else {
             self.decoder = None;
@@ -47,20 +53,28 @@ impl Audio {
                     self.playing = !self.playing;
                 }
 
-                let mut progress = decoder.get_pos().as_secs_f32();
-                if total_duration < progress {
-                    total_duration = progress;
+                self.progress = decoder.get_pos().as_secs_f32();
+                if total_duration < self.progress {
+                    total_duration = self.progress;
                 }
                 let slider: egui::Response =
-                    ui.add(Slider::new(&mut progress, 0.0..=total_duration).show_value(false));
+                    ui.add(Slider::new(&mut self.progress, 0.0..=total_duration).show_value(false));
 
                 if slider.changed() {
-                    decoder.try_seek(Duration::from_secs_f32(progress)).unwrap();
-                    self.sink.as_mut().map(|s| s.0.clear());
+                    decoder
+                        .try_seek(Duration::from_secs_f32(self.progress))
+                        .unwrap();
+                    if let Some(s) = self.sink.as_mut() {
+                        s.0.clear()
+                    }
                 }
 
                 let time = |s: f32| format!("{}:{:02}", s as u32 / 60, s as u32 % 60);
-                ui.monospace(format!("{} / {}", time(progress), time(total_duration)));
+                ui.monospace(format!(
+                    "{} / {}",
+                    time(self.progress),
+                    time(total_duration)
+                ));
             });
         } else {
             ui.horizontal(|ui| {
@@ -82,12 +96,9 @@ impl Audio {
                     let samples = decoder
                         .take_duration(Duration::from_secs_f32(1.0 / 60.0))
                         .collect::<Vec<_>>();
-                    let buffer = SamplesBuffer::new(
-                        decoder.channels(),
-                        decoder.sample_rate(),
-                        samples
-                    );
-                    
+                    let buffer =
+                        SamplesBuffer::new(decoder.channels(), decoder.sample_rate(), samples);
+
                     sink.append(buffer);
                     sink.play();
                 }
