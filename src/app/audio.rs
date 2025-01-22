@@ -92,9 +92,11 @@ impl Audio {
                 self.sink = Some((Sink::connect_new(&stream.mixer()), stream));
             }
             if let Some((sink, _)) = &self.sink {
-                while sink.len() < 30 {
+                let sample_size = 2048;
+                let target_samples = decoder.sample_rate() as usize / sample_size;
+                while sink.len() < target_samples {
                     let samples = decoder
-                        .take_duration(Duration::from_secs_f32(1.0 / 60.0))
+                        .take(sample_size)
                         .collect::<Vec<_>>();
                     let buffer =
                         SamplesBuffer::new(decoder.channels(), decoder.sample_rate(), samples);

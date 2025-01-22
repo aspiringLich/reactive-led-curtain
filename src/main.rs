@@ -1,5 +1,10 @@
 #![warn(clippy::all, rust_2018_idioms)]
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
+#![feature(let_chains)]
+
+mod app;
+pub use app::TemplateApp;
+
 
 // When compiling natively:
 #[cfg(not(target_arch = "wasm32"))]
@@ -20,7 +25,7 @@ fn main() -> eframe::Result {
     eframe::run_native(
         "led_reactive_curtain",
         native_options,
-        Box::new(|cc| Ok(Box::new(led_reactive_curtain::TemplateApp::new(cc)))),
+        Box::new(|cc| Ok(Box::new(TemplateApp::new(cc)))),
     )
 }
 
