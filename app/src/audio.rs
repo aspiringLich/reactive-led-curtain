@@ -119,36 +119,39 @@ pub fn ui(ui: &mut Ui, audio: &mut Audio, playback: &mut Playback) {
                 decoder.sample_rate(),
                 samples.as_slice(),
             );
-            SAMPLE_QUEUE
-                .get_or_init(|| Default::default())
-                .lock()
-                .push_back(samples);
-            SAMPLE_TX.get_or_init(|| playback.sample_tx.clone());
+
+            // *sigh* okay this is very jank but the vec cannot be sent between threads
+            // because the callback in `EmptyCallback` has to satisfy `Fn`
+            static SAMPLE_QUEUE: OnceLock<Mutex<VecDeque<Vec<i16>>>> = OnceLock::new();
+            static SAMPLE_TX: OnceLock<Sender<Vec<i16>>> = OnceLock::new();
 
             playback.sink.append(buffer);
-            playback.sink.append(EmptyCallback::<f32>::new(Box::new(|| {
-                // indubitably the best code to ever grace god's green earth
-                SAMPLE_TX
-                    .get()
-                    .expect("SAMPLE_TX should be initialized")
-                    .send(
-                        SAMPLE_QUEUE
-                            .get()
-                            .expect("SAMPLE_QUEUE should be initialized")
-                            .lock()
-                            .pop_front()
-                            .expect("SAMPLE_QUEUE should never be empty"),
-                    )
-                    .unwrap();
-            })));
+            if samples.len() == SAMPLE_SIZE {
+                SAMPLE_QUEUE
+                    .get_or_init(|| Default::default())
+                    .lock()
+                    .push_back(samples);
+                SAMPLE_TX.get_or_init(|| playback.sample_tx.clone());
+
+                playback.sink.append(EmptyCallback::<f32>::new(Box::new(|| {
+                    // indubitably the best code to ever grace god's green earth
+                    SAMPLE_TX
+                        .get()
+                        .expect("SAMPLE_TX should be initialized")
+                        .send(
+                            SAMPLE_QUEUE
+                                .get()
+                                .expect("SAMPLE_QUEUE should be initialized")
+                                .lock()
+                                .pop_front()
+                                .expect("SAMPLE_QUEUE should never be empty"),
+                        )
+                        .unwrap();
+                })));
+            }
             playback.sink.play();
         }
     } else {
         playback.sink.pause();
     }
 }
-
-// *sigh* okay this is very jank but the vec cannot be sent between threads
-// because the callback in `EmptyCallback` has to satisfy `Fn`
-static SAMPLE_QUEUE: OnceLock<Mutex<VecDeque<Vec<i16>>>> = OnceLock::new();
-static SAMPLE_TX: OnceLock<Sender<Vec<i16>>> = OnceLock::new();
