@@ -1,4 +1,4 @@
-mod audio;
+use crate::audio;
 
 #[derive(serde::Deserialize, serde::Serialize, Default)]
 #[serde(default)]
