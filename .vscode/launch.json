@@ -7,16 +7,16 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug unit tests in library 'led_reactive_curtain'",
+            "name": "Debug unit tests in library 'lib'",
             "cargo": {
                 "args": [
                     "test",
                     "--no-run",
                     "--lib",
-                    "--package=led_reactive_curtain"
+                    "--package=lib"
                 ],
                 "filter": {
-                    "name": "led_reactive_curtain",
+                    "name": "lib",
                     "kind": "lib"
                 }
             },
@@ -26,15 +26,15 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug executable 'led_reactive_curtain'",
+            "name": "Debug executable 'app'",
             "cargo": {
                 "args": [
                     "build",
-                    "--bin=led_reactive_curtain",
-                    "--package=led_reactive_curtain"
+                    "--bin=app",
+                    "--package=app"
                 ],
                 "filter": {
-                    "name": "led_reactive_curtain",
+                    "name": "app",
                     "kind": "bin"
                 }
             },
@@ -44,16 +44,16 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug unit tests in executable 'led_reactive_curtain'",
+            "name": "Debug unit tests in executable 'app'",
             "cargo": {
                 "args": [
                     "test",
                     "--no-run",
-                    "--bin=led_reactive_curtain",
-                    "--package=led_reactive_curtain"
+                    "--bin=app",
+                    "--package=app"
                 ],
                 "filter": {
-                    "name": "led_reactive_curtain",
+                    "name": "app",
                     "kind": "bin"
                 }
             },

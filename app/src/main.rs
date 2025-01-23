@@ -4,8 +4,10 @@
 
 mod app;
 mod audio;
-pub use app::TemplateApp;
+mod spectrogram;
+pub use app::AppState;
 
+pub const SAMPLE_SIZE: usize = 1024;
 
 // When compiling natively:
 #[cfg(not(target_arch = "wasm32"))]
@@ -26,7 +28,7 @@ fn main() -> eframe::Result {
     eframe::run_native(
         "led_reactive_curtain",
         native_options,
-        Box::new(|cc| Ok(Box::new(TemplateApp::new(cc)))),
+        Box::new(|cc| Ok(Box::new(AppState::new(cc)))),
     )
 }
 
