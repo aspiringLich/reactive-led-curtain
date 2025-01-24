@@ -42,6 +42,11 @@ pub const fn hz_to_idx(hz: f32) -> usize {
     (hz / 44_100.0 * SAMPLE_SIZE as f32) as usize
 }
 
+/// Assumes a sample rate of 44.1kHz
+pub const fn hz_to_idxf(hz: f32) -> f32 {
+    hz / 44_100.0 * SAMPLE_SIZE as f32
+}
+
 // fn hamming_window_multiplier(i: usize, len: usize) -> f32 {
 //     0.54 - (0.46 * (2.0 * PI * i as f32 / f32::cos(len as f32 - 1.0)))
 // }
