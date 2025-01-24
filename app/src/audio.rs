@@ -14,7 +14,7 @@ use rodio::{
     source::{EmptyCallback, TrackPosition},
 };
 
-use lib::SAMPLE_SIZE;
+use lib::{SAMPLE_SIZE, SAMPLE_WINDOWS};
 
 type AudioDecoder = TrackPosition<Decoder<BufReader<File>>>;
 
@@ -119,9 +119,12 @@ pub fn ui(ui: &mut Ui, audio: &mut Audio, playback: &mut Playback) {
 
     if audio.playing {
         let decoder = playback.decoder.as_mut().unwrap();
-        let target_samples = decoder.sample_rate() as usize / SAMPLE_SIZE;
-        while playback.sink.len() < target_samples {
-            let samples = decoder.take(SAMPLE_SIZE).collect::<Vec<_>>();
+
+        let target_sample_size = SAMPLE_SIZE / SAMPLE_WINDOWS;
+        let target_samples = decoder.sample_rate() as usize / target_sample_size;
+
+        while playback.sink.len() < target_samples * 2 {
+            let samples = decoder.take(target_sample_size).collect::<Vec<_>>();
             let buffer = SamplesBuffer::new(
                 decoder.channels(),
                 decoder.sample_rate(),
@@ -129,7 +132,7 @@ pub fn ui(ui: &mut Ui, audio: &mut Audio, playback: &mut Playback) {
             );
 
             playback.sink.append(buffer);
-            if samples.len() == SAMPLE_SIZE {
+            if samples.len() == target_sample_size {
                 SAMPLE_QUEUE
                     .get_or_init(|| Default::default())
                     .lock()

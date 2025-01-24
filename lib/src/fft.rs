@@ -20,7 +20,7 @@ impl Default for FftOutput {
 }
 
 impl FftOutput {
-    pub fn new(fft: Arc<dyn Fft<f32>>, samples: &[i16]) -> Self {
+    pub fn new(fft: Arc<dyn Fft<f32>>, samples: impl ExactSizeIterator<Item = i16>) -> Self {
         let raw = fft_samples(fft.as_ref(), samples);
         let db = raw
             .iter()
@@ -51,11 +51,11 @@ fn hanning_window_multiplier(i: usize, len: usize) -> f32 {
 }
 
 /// Runs a discrete fourier transform on a buffer of audio samples
-fn fft_samples(fft: &dyn Fft<f32>, samples: &[i16]) -> Vec<Complex<f32>> {
+fn fft_samples(fft: &dyn Fft<f32>, samples: impl ExactSizeIterator<Item = i16>) -> Vec<Complex<f32>> {
     debug_assert_eq!(fft.len(), samples.len());
     let mut buffer = samples
         .into_iter()
-        .map(|i| (*i as f32) / i16::MAX as f32)
+        .map(|i| (i as f32) / i16::MAX as f32)
         .enumerate()
         .map(|(i, sample)| sample * hanning_window_multiplier(i, fft.len()))
         .map(|re| Complex { re, im: 0.0 })
