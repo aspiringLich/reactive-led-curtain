@@ -90,7 +90,10 @@ pub fn ui(ui: &mut Ui, audio: &mut Audio, playback: &mut Playback) {
                 decoder
                     .try_seek(Duration::from_secs_f32(audio.progress))
                     .unwrap();
-                playback.sink.clear()
+                playback.sink.clear();
+                if let Some(mut queue) = SAMPLE_QUEUE.get().map(|q| q.lock()) {
+                    queue.clear();
+                }
             }
 
             let time = |s: f32| format!("{}:{:02}", s as u32 / 60, s as u32 % 60);
@@ -108,6 +111,11 @@ pub fn ui(ui: &mut Ui, audio: &mut Audio, playback: &mut Playback) {
         });
     }
 
+    // *sigh* okay this is very jank but the vec cannot be sent between threads
+    // because the callback in `EmptyCallback` has to satisfy `Fn`
+    static SAMPLE_QUEUE: OnceLock<Mutex<VecDeque<Vec<i16>>>> = OnceLock::new();
+    static SAMPLE_TX: OnceLock<Sender<Vec<i16>>> = OnceLock::new();
+
     if audio.playing
         && let Some(decoder) = &mut playback.decoder
     {
@@ -119,11 +127,6 @@ pub fn ui(ui: &mut Ui, audio: &mut Audio, playback: &mut Playback) {
                 decoder.sample_rate(),
                 samples.as_slice(),
             );
-
-            // *sigh* okay this is very jank but the vec cannot be sent between threads
-            // because the callback in `EmptyCallback` has to satisfy `Fn`
-            static SAMPLE_QUEUE: OnceLock<Mutex<VecDeque<Vec<i16>>>> = OnceLock::new();
-            static SAMPLE_TX: OnceLock<Sender<Vec<i16>>> = OnceLock::new();
 
             playback.sink.append(buffer);
             if samples.len() == SAMPLE_SIZE {

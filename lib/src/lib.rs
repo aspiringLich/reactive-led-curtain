@@ -4,4 +4,4 @@ pub mod fft;
 pub mod state;
 pub mod unit;
 
-pub const SAMPLE_SIZE: usize = 1024;
+pub const SAMPLE_SIZE: usize = 2048;

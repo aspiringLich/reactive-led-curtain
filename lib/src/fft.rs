@@ -20,16 +20,30 @@ impl Default for FftOutput {
 }
 
 impl FftOutput {
-    pub fn from_prev(prev: &FftOutput, samples: &[i16]) -> Self {
-        let raw = fft_samples(prev.fft.clone(), samples);
+    pub fn new(fft: Arc<dyn Fft<f32>>, samples: &[i16]) -> Self {
+        let raw = fft_samples(fft.as_ref(), samples);
         let db = raw
             .iter()
             .into_iter()
             .map(|a| unit::Db::from_amplitude(a.norm()))
             .collect::<Vec<_>>();
 
-        Self { raw, db, fft: prev.fft.clone() }
+        Self {
+            raw,
+            db,
+            fft,
+        }
     }
+}
+
+/// Assumes a sample rate of 44.1kHz
+pub const fn idx_to_hz(i: usize) -> f32 {
+    i as f32 * 44_100.0 / SAMPLE_SIZE as f32
+}
+
+/// Assumes a sample rate of 44.1kHz
+pub const fn hz_to_idx(hz: f32) -> usize {
+    (hz / 44_100.0 * SAMPLE_SIZE as f32) as usize
 }
 
 fn hamming_window_multiplier(i: usize, len: usize) -> f32 {
@@ -37,7 +51,7 @@ fn hamming_window_multiplier(i: usize, len: usize) -> f32 {
 }
 
 /// Runs a discrete fourier transform on a buffer of audio samples
-pub fn fft_samples(fft: Arc<dyn Fft<f32>>, samples: &[i16]) -> Vec<Complex<f32>> {
+fn fft_samples(fft: &dyn Fft<f32>, samples: &[i16]) -> Vec<Complex<f32>> {
     debug_assert_eq!(fft.len(), samples.len());
     let mut buffer = samples
         .into_iter()

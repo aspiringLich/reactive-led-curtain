@@ -8,7 +8,7 @@ pub struct AnalysisState {
 impl AnalysisState {    
     pub fn from_prev(prev: &AnalysisState, samples: &[i16]) -> Self {
         Self {
-            fft_out: fft::FftOutput::from_prev(&prev.fft_out, samples),
+            fft_out: fft::FftOutput::new(prev.fft_out.fft.clone(), samples),
         }
     }
 }
