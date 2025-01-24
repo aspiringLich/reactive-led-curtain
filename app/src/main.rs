@@ -4,6 +4,7 @@
 
 mod app;
 mod audio;
+mod cmap;
 mod spectrogram;
 pub use app::AppState;
 

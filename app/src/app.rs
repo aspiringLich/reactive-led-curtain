@@ -6,6 +6,7 @@ use crate::{audio, spectrogram};
 #[serde(default)]
 pub struct PersistentAppState {
     pub audio: audio::Audio,
+    pub spec_cfg: spectrogram::SpecConfig,
 }
 
 pub struct AppState {
@@ -37,10 +38,12 @@ impl eframe::App for AppState {
         egui::SidePanel::left("Configuration").show(ctx, |ui| {
             audio::ui(ui, &mut self.persistent.audio, &mut self.playback);
             ui.separator();
+            self.persistent.spec_cfg.ui(ui);
+            ui.separator();
         });
 
         egui::CentralPanel::default().show(ctx, |ui| {
-            self.spectrogram.ui(ui)
+            self.spectrogram.ui(ui, &self.persistent.spec_cfg)
         });
 
         if self.persistent.audio.playing {
