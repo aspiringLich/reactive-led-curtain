@@ -64,6 +64,7 @@ pub fn ui(ui: &mut Ui, audio: &mut Audio, playback: &mut Playback) {
 
         let path = Path::new(&audio.wav_path);
         if wav_path_edit.changed() {
+            audio.progress = 0.0;
             playback.decoder = try_get_decoder(path, audio.progress);
         }
     });

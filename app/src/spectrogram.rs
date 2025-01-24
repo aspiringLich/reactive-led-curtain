@@ -16,8 +16,8 @@ pub struct SpecConfig {
 impl Default for SpecConfig {
     fn default() -> Self {
         Self {
-            db_min: 40.0,
-            db_max: 150.0,
+            db_min: -70.0,
+            db_max: 50.0,
         }
     }
 }
@@ -43,28 +43,26 @@ impl SpecConfig {
             .spacing([40.0, 4.0])
             .striped(true)
             .show(ui, |ui| {
-                const MIN_SEP: f32 = 50.0;
+                let min_sep = 10.0;
 
                 ui.label("Db min");
-                let min = ui.add(Slider::new(&mut self.db_min, 0.0..=100.0));
+                let min = ui.add(Slider::new(&mut self.db_min, -100.0..=0.0));
                 ui.end_row();
                 ui.label("Db max");
-                let max = ui.add(Slider::new(
-                    &mut self.db_max,
-                    0.0 + MIN_SEP..=400.0 + MIN_SEP,
-                ));
-                ui.end_row();     
+                let max = ui.add(Slider::new(&mut self.db_max, -50.0..=100.0));
+                ui.end_row();
 
                 if min.changed() {
-                    if self.db_max - self.db_min < MIN_SEP {
-                        self.db_max = self.db_min + MIN_SEP;
+                    if self.db_max - self.db_min < min_sep {
+                        self.db_max = self.db_min + min_sep;
                     }
                 } else if max.changed() {
-                    if self.db_max - self.db_min < MIN_SEP {
-                        self.db_min = self.db_max - MIN_SEP;
+                    if self.db_max - self.db_min < min_sep {
+                        self.db_min = self.db_max - min_sep;
                     }
                 }
             });
+        ui.label(format!("Image size: {IMG_WIDTH}x{DFT_IDX}"));
     }
 }
 
@@ -111,7 +109,7 @@ impl Spectrogram {
                 {
                     let db = *self.state.fft_out.db[i];
                     self.img.pixels[p_idx] =
-                        cmap::plasma_cmap((db - cfg.db_min) / (cfg.db_max - cfg.db_min));
+                        cmap::magma_cmap((db - cfg.db_min) / (cfg.db_max - cfg.db_min));
                 }
             }
             self.samples = samples;
