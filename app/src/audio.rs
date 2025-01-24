@@ -116,9 +116,8 @@ pub fn ui(ui: &mut Ui, audio: &mut Audio, playback: &mut Playback) {
     static SAMPLE_QUEUE: OnceLock<Mutex<VecDeque<Vec<i16>>>> = OnceLock::new();
     static SAMPLE_TX: OnceLock<Sender<Vec<i16>>> = OnceLock::new();
 
-    if audio.playing
-        && let Some(decoder) = &mut playback.decoder
-    {
+    if audio.playing {
+        let decoder = playback.decoder.as_mut().unwrap();
         let target_samples = decoder.sample_rate() as usize / SAMPLE_SIZE;
         while playback.sink.len() < target_samples {
             let samples = decoder.take(SAMPLE_SIZE).collect::<Vec<_>>();
@@ -152,8 +151,8 @@ pub fn ui(ui: &mut Ui, audio: &mut Audio, playback: &mut Playback) {
                         .unwrap();
                 })));
             }
-            playback.sink.play();
         }
+        playback.sink.play();
     } else {
         playback.sink.pause();
     }
