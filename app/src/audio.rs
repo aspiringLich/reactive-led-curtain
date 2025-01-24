@@ -14,7 +14,7 @@ use rodio::{
     source::{EmptyCallback, TrackPosition},
 };
 
-use crate::SAMPLE_SIZE;
+use lib::SAMPLE_SIZE;
 
 type AudioDecoder = TrackPosition<Decoder<BufReader<File>>>;
 

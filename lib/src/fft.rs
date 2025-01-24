@@ -1,10 +1,35 @@
-use rustfft::{num_complex::Complex, FftPlanner};
+use rustfft::{Fft, FftPlanner, num_complex::Complex};
 use std::{f32::consts::PI, sync::Arc};
 
-pub use rustfft::Fft;
+use crate::{SAMPLE_SIZE, unit};
 
-pub fn fft(len: usize) -> Arc<dyn Fft<f32>> {
-    FftPlanner::new().plan_fft_forward(len)
+pub struct FftOutput {
+    pub raw: Vec<Complex<f32>>,
+    pub db: Vec<unit::Db>,
+    pub fft: Arc<dyn Fft<f32>>,
+}
+
+impl Default for FftOutput {
+    fn default() -> Self {
+        Self {
+            raw: vec![Default::default(); SAMPLE_SIZE],
+            db: vec![Default::default(); SAMPLE_SIZE],
+            fft: FftPlanner::new().plan_fft_forward(SAMPLE_SIZE),
+        }
+    }
+}
+
+impl FftOutput {
+    pub fn from_prev(prev: &FftOutput, samples: &[i16]) -> Self {
+        let raw = fft_samples(prev.fft.clone(), samples);
+        let db = raw
+            .iter()
+            .into_iter()
+            .map(|a| unit::Db::from_amplitude(a.norm()))
+            .collect::<Vec<_>>();
+
+        Self { raw, db, fft: prev.fft.clone() }
+    }
 }
 
 fn hamming_window_multiplier(i: usize, len: usize) -> f32 {

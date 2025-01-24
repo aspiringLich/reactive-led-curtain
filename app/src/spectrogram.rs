@@ -1,15 +1,14 @@
-use std::sync::{Arc, mpsc::Receiver};
+use std::sync::{mpsc::Receiver};
 
 use egui::{Color32, ColorImage, Context, Image, TextureHandle, TextureOptions, Ui, Vec2};
-use lib::fft::{self, Fft};
 
-use crate::SAMPLE_SIZE;
+use lib::{state::AnalysisState, SAMPLE_SIZE};
 
 pub struct Spectrogram {
     tex: TextureHandle,
     img: ColorImage,
     sample_rx: Receiver<Vec<i16>>,
-    fft: Arc<dyn Fft<f32>>,
+    state: AnalysisState,
 }
 
 impl Spectrogram {
@@ -19,14 +18,16 @@ impl Spectrogram {
             tex: ctx.load_texture("spectrogram", img.clone(), TextureOptions::LINEAR),
             img,
             sample_rx,
-            fft: fft::fft(SAMPLE_SIZE),
+            state: Default::default()
         }
     }
 
     pub fn ui(&mut self, ui: &mut Ui) {
         let mut any = false;
         while let Ok(samples) = self.sample_rx.try_recv() {
-            let spec = fft::fft_samples(self.fft.clone(), samples.as_slice());
+            self.state = AnalysisState::from_prev(&self.state, &samples);
+            let fft_out = &self.state.fft_out;
+            dbg!(fft_out.db.iter().take(10).collect::<Vec<_>>());
 
             // rotating left shifts stuff left; we are overwriting the last column anyway
             //
@@ -41,14 +42,18 @@ impl Spectrogram {
                 .map(|i| i * SAMPLE_SIZE + SAMPLE_SIZE - 1)
                 .enumerate()
             {
-                self.img.pixels[p_idx] = Color32::from_gray((spec[i].norm() / 20000. * 255.0) as u8);
+                self.img.pixels[p_idx] =
+                    Color32::from_gray((*fft_out.db[i]) as u8);
             }
             any = true;
         }
         if any {
             self.tex.set(self.img.clone(), TextureOptions::LINEAR);
         }
-        let size = ui.available_size_before_wrap().min_elem();
-        ui.add(Image::new(&self.tex).fit_to_exact_size(Vec2::new(size, size)));
+        ui.add(
+            Image::new(&self.tex)
+                .maintain_aspect_ratio(false)
+                .shrink_to_fit(),
+        );
     }
 }
