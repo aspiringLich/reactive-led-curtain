@@ -4,19 +4,20 @@ use egui::{
     Color32, ColorImage, ComboBox, Context, Image, Slider, TextureHandle, TextureOptions, Ui,
 };
 
-use lib::{SAMPLE_SIZE, SAMPLE_WINDOWS, fft, state::AnalysisState};
+use lib::{fft::{self, hz_to_idx}, state::AnalysisState, unit, SAMPLE_SIZE, SAMPLE_WINDOWS};
 use serde::{Deserialize, Serialize};
 
 use crate::cmap;
 
 #[derive(Serialize, Deserialize)]
+#[serde(default)]
 pub struct SpecConfig {
     db_min: f32,
     db_max: f32,
     scale: SpecScale,
 }
 
-#[derive(Serialize, Deserialize, PartialEq)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Copy)]
 pub enum SpecScale {
     Linear,
     Log,
@@ -32,19 +33,8 @@ impl Default for SpecConfig {
     }
 }
 
-pub struct Spectrogram {
-    tex: TextureHandle,
-    img: ColorImage,
-    tex_log: TextureHandle,
-    img_log: ColorImage,
-    sample_rx: Receiver<Vec<i16>>,
-    state: AnalysisState,
-    buffer: VecDeque<i16>,
-}
-
-const IMG_WIDTH: usize = 512;
-const IDX_MIN: usize = fft::hz_to_idx(50.0);
-const IDX_MAX: usize = fft::hz_to_idx(10_000.0);
+const MAXF: f32 = 8_192.0;
+const MINF: f32 = 50.0;
 
 impl SpecConfig {
     pub fn ui(&mut self, ui: &mut Ui) {
@@ -85,34 +75,148 @@ impl SpecConfig {
                     });
                 ui.end_row();
             });
-        ui.label(format!("Image size: {IMG_WIDTH}x{}", IDX_MAX - IDX_MIN));
+        ui.label(format!("Frequency Range: {MINF}..{MAXF}"));
+        ui.label(format!("Indeces: {}", fft::hz_to_idx(MAXF) - fft::hz_to_idx(MINF)));
     }
 }
 
-fn shift_img(img: &mut ColorImage, mut f: impl FnMut(usize) -> Color32) {
-    // rotating left shifts stuff left; we are overwriting the last column anyway
-    //
-    // 0 1 2     1 2 |3
-    // 3 4 5  -> 4 5 |6
-    // 6 7 8     7 8 |0
-    img.pixels.rotate_left(1);
+struct SpectrogramImage {
+    tex: TextureHandle,
+    img: ColorImage,
+    dirty: bool,
+    scale: fn(f32) -> f32,
+}
 
-    // now write data in the last column
-    let [w, h] = img.size;
-    for (i, p_idx) in (0..h).into_iter().map(|y| (h - y) * w - 1).enumerate() {
-        img.pixels[p_idx] = f(i);
+impl SpectrogramImage {
+    fn new(ctx: &egui::Context, name: &str, size: [usize; 2], scale: fn(f32) -> f32) -> Self {
+        let img = ColorImage::new(size, Color32::BLACK);
+        Self {
+            tex: ctx.load_texture(name, img.clone(), TextureOptions::LINEAR),
+            img,
+            dirty: false,
+            scale,
+        }
     }
+
+    fn size(&self) -> [usize; 2] {
+        self.img.size
+    }
+
+    fn shift_img(&mut self, mut f: impl FnMut(usize) -> Color32) {
+        // rotating left shifts stuff left; we are overwriting the last column anyway
+        //
+        // 0 1 2     1 2 |3
+        // 3 4 5  -> 4 5 |6
+        // 6 7 8     7 8 |0
+        self.img.pixels.rotate_left(1);
+
+        // now write data in the last column
+        let [w, h] = self.size();
+        for (i, p_idx) in (0..h).into_iter().map(|y| (h - y) * w - 1).enumerate() {
+            self.img.pixels[p_idx] = f(i);
+        }
+        self.dirty = true;
+    }
+
+    fn update_from_db(&mut self, spec: &[unit::Db], cfg: &SpecConfig) {
+        let [_, h] = self.size();
+        let scale = self.scale;
+        self.shift_img(|i| {
+            let (len, h, i) = (spec.len() as f32, h as f32, i as f32);
+
+            let idx_lo = (scale)(i / h) * len;
+            let idx_hi = (scale)((i + 1.0) / h) * len;
+            let idx_hi = f32::min(idx_hi, len - 1.0);
+            let idx_lo = f32::min(idx_hi, idx_lo);
+
+            let db = if idx_lo.floor() != idx_hi.floor() {
+                let lo_frac = idx_lo.ceil() - idx_lo;
+                let hi_frac = idx_hi - idx_hi.floor();
+
+                let range = &spec[idx_lo as usize..=idx_hi as usize];
+                let mut acc = 0.0;
+                acc += *range[0] * lo_frac;
+                acc += *range[range.len() - 1] * hi_frac;
+                acc += range[1..range.len() - 1].iter().map(|d| **d).sum::<f32>();
+
+                acc / (idx_hi - idx_lo)
+            } else {
+                *spec[idx_lo as usize]
+            };
+            cmap::magma_cmap((db - cfg.db_min) / (cfg.db_max - cfg.db_min))
+        });
+    }
+
+    fn tex(&mut self) -> TextureHandle {
+        if self.dirty {
+            self.tex.set(self.img.clone(), TextureOptions::NEAREST);
+            self.dirty = false;
+        }
+        self.tex.clone()
+    }
+}
+
+struct SpectrogramImageSet {
+    linear: SpectrogramImage,
+    log: SpectrogramImage,
+}
+
+impl SpectrogramImageSet {
+    fn scale_img_size(scale: SpecScale) -> [usize; 2] {
+        match scale {
+            SpecScale::Linear => [512, 512],
+            SpecScale::Log => [512, 512],
+        }
+    }
+
+    fn new(ctx: &egui::Context, name: &str) -> Self {
+        const B: f32 = 512.0;
+        Self {
+            linear: SpectrogramImage::new(
+                ctx,
+                &format!("{name}_linear"),
+                Self::scale_img_size(SpecScale::Linear),
+                |x| x,
+            ),
+            log: SpectrogramImage::new(
+                ctx,
+                &format!("{name}_log"),
+                Self::scale_img_size(SpecScale::Log),
+                |x| 1.0 - (B - B * x + x).log(B)
+            ),
+        }
+    }
+
+    fn update_from_db(&mut self, db: &[unit::Db], cfg: &SpecConfig) {
+        self.linear.update_from_db(db, cfg);
+        self.log.update_from_db(db, cfg);
+    }
+    
+    fn tex(&mut self, scale: SpecScale) -> TextureHandle {
+        match scale {
+            SpecScale::Linear => self.linear.tex(),
+            SpecScale::Log => self.log.tex(),
+        }
+    }
+}
+
+pub struct Spectrogram {
+    spec: SpectrogramImageSet,
+    sample_rx: Receiver<Vec<i16>>,
+    state: AnalysisState,
+    buffer: VecDeque<i16>,
 }
 
 impl Spectrogram {
     pub fn new(ctx: &Context, sample_rx: Receiver<Vec<i16>>) -> Self {
-        let img = ColorImage::new([IMG_WIDTH, IDX_MAX - IDX_MIN], Color32::BLACK);
-        let img_log = ColorImage::new([IMG_WIDTH, IDX_MAX - IDX_MIN], Color32::BLACK);
+        // let img = ColorImage::new([IMG_WIDTH, IDX_MAX], Color32::BLACK);
+        // let img_log = ColorImage::new([IMG_WIDTH, IDX_MAX], Color32::BLACK);
         Self {
-            tex: ctx.load_texture("spectrogram", img.clone(), TextureOptions::NEAREST),
-            img,
-            tex_log: ctx.load_texture("spectrogram_log", img_log.clone(), TextureOptions::NEAREST),
-            img_log,
+            // tex: ctx.load_texture("spectrogram", img.clone(), TextureOptions::NEAREST),
+            // img,
+            // tex_log: ctx.load_texture("spectrogram_log", img_log.clone(), TextureOptions::NEAREST),
+            // img_log,
+            spec: SpectrogramImageSet::new(ctx, "spectrogram"),
             sample_rx,
             state: Default::default(),
             buffer: VecDeque::from_iter(repeat(0).take(SAMPLE_SIZE)),
@@ -120,7 +224,6 @@ impl Spectrogram {
     }
 
     pub fn ui(&mut self, ui: &mut Ui, cfg: &SpecConfig) {
-        let mut any = false;
         while let Ok(samples) = self.sample_rx.try_recv() {
             let window_len = SAMPLE_SIZE / SAMPLE_WINDOWS;
             assert_eq!(samples.len(), window_len);
@@ -129,60 +232,16 @@ impl Spectrogram {
 
             self.state = AnalysisState::from_prev(&self.state, self.buffer.iter().cloned());
             let spec = &self.state.fft_out.db;
-            shift_img(&mut self.img, |i| {
-                let db = *spec[IDX_MIN + i];
-                cmap::magma_cmap((db - cfg.db_min) / (cfg.db_max - cfg.db_min))
-            });
-            let [_, h] = self.img_log.size;
-            shift_img(&mut self.img_log, |i| {
-                let (h, i) = (h as f32, i as f32);
-
-                let idx_lo = scaling_log(i, h);
-                let idx_hi = scaling_log(i + 1.0, h);
-                let idx_hi = f32::min(idx_hi, h - 1.);
-                let idx_lo = f32::min(idx_hi, idx_lo);
-
-                let db = if idx_lo.floor() != idx_hi.floor() {
-                    let lo_frac = idx_lo.ceil() - idx_lo;
-                    let hi_frac = idx_hi - idx_hi.floor();
-
-                    let range = &spec[idx_lo as usize..=idx_hi as usize];
-                    let mut acc = 0.0;
-                    acc += *range[0] * lo_frac;
-                    acc += *range[range.len() - 1] * hi_frac;
-                    acc += range[1..range.len() - 1].iter().map(|d| **d).sum::<f32>();
-
-                    acc / (idx_hi - idx_lo)
-                } else {
-                    *spec[idx_lo as usize]
-                };
-                cmap::magma_cmap((db - cfg.db_min) / (cfg.db_max - cfg.db_min))
-            });
-
-            any = true;
+            let (idx_min, idx_max) = (hz_to_idx(MINF), hz_to_idx(MAXF));
+            let audible = &spec[idx_min..idx_max];
+            
+            self.spec.update_from_db(audible, cfg);
         }
-        if any {
-            self.tex.set(self.img.clone(), TextureOptions::NEAREST);
-            self.tex_log
-                .set(self.img_log.clone(), TextureOptions::NEAREST);
-        }
-
-        let active_tex = match cfg.scale {
-            SpecScale::Linear => &self.tex,
-            SpecScale::Log => &self.tex_log,
-        };
 
         ui.add(
-            Image::new(active_tex)
+            Image::new(&self.spec.tex(cfg.scale))
                 .maintain_aspect_ratio(false)
                 .shrink_to_fit(),
         );
     }
-}
-
-///     h => h
-///     0 => 0
-/// scales interval in between with a logarithmic function
-fn scaling_log(x: f32, h: f32) -> f32 {
-    h * (1.0 - (h + 1.0 - x).log(h + 1.0))
 }

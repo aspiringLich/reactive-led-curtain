@@ -19,6 +19,7 @@ use lib::{SAMPLE_SIZE, SAMPLE_WINDOWS};
 type AudioDecoder = TrackPosition<Decoder<BufReader<File>>>;
 
 #[derive(serde::Deserialize, serde::Serialize, Default)]
+#[serde(default)]
 pub struct Audio {
     wav_path: String,
     pub playing: bool,
