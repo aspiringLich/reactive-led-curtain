@@ -34,7 +34,7 @@ impl Default for SpecConfig {
 }
 
 const MAXF: f32 = 8_192.0;
-const MINF: f32 = 50.0;
+const MINF: f32 = 5.0;
 
 impl SpecConfig {
     pub fn ui(&mut self, ui: &mut Ui) {
@@ -75,7 +75,7 @@ impl SpecConfig {
                     });
                 ui.end_row();
             });
-        ui.label(format!("Frequency Range: {MINF}..{MAXF}"));
+        ui.label(format!("Frequency Range: {MINF}, {MAXF}"));
         ui.label(format!("Indeces: {}", fft::hz_to_idx(MAXF) - fft::hz_to_idx(MINF)));
     }
 }
@@ -170,7 +170,7 @@ impl SpectrogramImageSet {
     }
 
     fn new(ctx: &egui::Context, name: &str) -> Self {
-        const B: f32 = 512.0;
+        const B: f32 = 1024.0;
         Self {
             linear: SpectrogramImage::new(
                 ctx,
