@@ -1,13 +1,13 @@
 use std::{
     collections::VecDeque,
-    fs::File,
-    io::BufReader,
-    path::Path,
+    fs::{self, File},
+    io::{self, BufReader},
+    path::{Path, PathBuf},
     sync::{OnceLock, mpsc::Sender},
     time::Duration,
 };
 
-use egui::{Button, Slider, TextEdit, Ui, mutex::Mutex};
+use egui::{Button, ComboBox, Slider, TextEdit, Ui, mutex::Mutex};
 use rodio::{
     Decoder, OutputStream, Sink, Source,
     buffer::SamplesBuffer,
@@ -21,9 +21,16 @@ type AudioDecoder = TrackPosition<Decoder<BufReader<File>>>;
 #[derive(serde::Deserialize, serde::Serialize, Default)]
 #[serde(default)]
 pub struct Audio {
-    wav_path: String,
+    folder: String,
+    file: String,
     pub playing: bool,
     progress: f32,
+}
+
+impl Audio {
+    pub fn filepath(&self) -> PathBuf {
+        return PathBuf::from(format!("{}/{}", self.folder, self.file));
+    }
 }
 
 pub struct Playback {
@@ -34,10 +41,14 @@ pub struct Playback {
 }
 
 impl Playback {
-    pub fn new(audio: &Audio, sample_tx: Sender<Vec<i16>>) -> Self {
+    pub fn new(audio: &mut Audio, sample_tx: Sender<Vec<i16>>) -> Self {
         let stream = rodio::OutputStreamBuilder::open_default_stream().unwrap();
+        let decoder = try_get_decoder(&audio.filepath(), audio.progress);
+        if decoder.is_none() {
+            audio.playing = false;
+        }
         Self {
-            decoder: try_get_decoder(Path::new(&audio.wav_path), audio.progress),
+            decoder,
             sink: Sink::connect_new(&stream.mixer()),
             _stream: stream,
             sample_tx,
@@ -57,18 +68,43 @@ fn try_get_decoder(path: &Path, progress: f32) -> Option<AudioDecoder> {
     }
 }
 
+fn read_dir(dir: &Path) -> io::Result<Vec<String>> {
+    let mut out = fs::read_dir(dir)?
+        .filter_map(|entry| Some(entry.ok()?))
+        .filter(|entry| entry.path().is_file())
+        .filter_map(|entry| entry.file_name().into_string().ok())
+        .collect::<Vec<_>>();
+    out.sort_by_key(|s| s.to_lowercase());
+    Ok(out)
+}
+
 pub fn ui(ui: &mut Ui, audio: &mut Audio, playback: &mut Playback) {
     ui.heading("Playback");
     ui.horizontal(|ui| {
-        ui.label("filepath");
-        let wav_path_edit = ui.add(TextEdit::singleline(&mut audio.wav_path));
+        ui.label("Folder");
+        let folder_edit = ui.add(TextEdit::singleline(&mut audio.folder));
 
-        let path = Path::new(&audio.wav_path);
-        if wav_path_edit.changed() {
-            audio.progress = 0.0;
-            playback.decoder = try_get_decoder(path, audio.progress);
+        if folder_edit.changed() {
+            audio.file = String::new();
         }
     });
+    let file_select = ComboBox::from_label("File")
+        .selected_text(&audio.file)
+        .height(f32::INFINITY)
+        .show_ui(ui, |ui| {
+            if let Ok(files) = read_dir(&Path::new(&audio.folder)) {
+                files.into_iter().any(|file| {
+                    ui.selectable_value(&mut audio.file, file.clone(), &file)
+                        .clicked()
+                })
+            } else {
+                false
+            }
+        });
+    if file_select.inner == Some(true) {
+        audio.progress = 0.0;
+        playback.decoder = try_get_decoder(&audio.filepath(), audio.progress);
+    }
 
     if let Some(decoder) = &mut playback.decoder {
         ui.horizontal(|ui| {
@@ -119,7 +155,10 @@ pub fn ui(ui: &mut Ui, audio: &mut Audio, playback: &mut Playback) {
     static SAMPLE_TX: OnceLock<Sender<Vec<i16>>> = OnceLock::new();
 
     if audio.playing {
-        let decoder = playback.decoder.as_mut().unwrap();
+        let Some(decoder) = playback.decoder.as_mut() else {
+            playback.decoder = None;
+            return;
+        };
 
         let target_sample_size = SAMPLE_SIZE / SAMPLE_WINDOWS;
         let target_samples = decoder.sample_rate() as usize / target_sample_size;

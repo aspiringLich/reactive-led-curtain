@@ -17,12 +17,12 @@ pub struct AppState {
 
 impl AppState {
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
-        let persistent =
+        let mut persistent =
             eframe::get_value::<PersistentAppState>(cc.storage.unwrap(), eframe::APP_KEY)
                 .unwrap_or_default();
         let (sample_tx, sample_rx) = channel();
         Self {
-            playback: audio::Playback::new(&persistent.audio, sample_tx),
+            playback: audio::Playback::new(&mut persistent.audio, sample_tx),
             spectrogram: spectrogram::Spectrogram::new(&cc.egui_ctx, sample_rx),
             persistent,
         }
