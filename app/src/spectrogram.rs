@@ -4,11 +4,7 @@ use egui::{
     Color32, ColorImage, ComboBox, Context, Image, Slider, TextureHandle, TextureOptions, Ui,
 };
 
-use lib::{
-    state::{AnalysisContext, AnalysisState},
-    cfg::AnalysisConfig,
-    unit,
-};
+use lib::{cfg::AnalysisConfig, state::AnalysisState, unit};
 use serde::{Deserialize, Serialize};
 
 use crate::cmap;
@@ -38,9 +34,7 @@ impl Default for SpecConfig {
 }
 
 impl SpecConfig {
-    pub fn ui(&mut self, ui: &mut Ui, ctx: &AnalysisContext) {
-        let AnalysisContext { cfg, .. } = ctx;
-
+    pub fn ui(&mut self, ui: &mut Ui, cfg: &AnalysisConfig) {
         ui.heading("Spectrogram");
         egui::Grid::new("spec_grid")
             .num_columns(2)
@@ -229,16 +223,15 @@ impl Spectrogram {
         }
     }
 
-    pub fn ui(&mut self, ui: &mut Ui, ctx: &AnalysisContext, scfg: &SpecConfig) {
+    pub fn ui(&mut self, ui: &mut Ui, cfg: &AnalysisConfig, scfg: &SpecConfig) {
         while let Ok(samples) = self.sample_rx.try_recv() {
-            let hop_len = ctx.cfg.fft.hop_len;
-            let cfg = &ctx.cfg;
+            let hop_len = cfg.fft.hop_len;
             assert_eq!(samples.len(), hop_len);
 
             self.buffer.drain(0..hop_len);
             self.buffer.extend(&samples);
 
-            self.state = AnalysisState::from_prev(ctx, &self.state, self.buffer.iter().cloned());
+            self.state = AnalysisState::from_prev(cfg, &self.state, self.buffer.iter().cloned());
             let spec = &self.state.fft_out.db;
             let audible = &spec[cfg.min_idx()..cfg.max_idx()];
 

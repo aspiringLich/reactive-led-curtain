@@ -1,6 +1,6 @@
 use std::{fs, sync::mpsc::channel};
 
-use lib::{cfg::AnalysisConfig, state::AnalysisContext};
+use lib::cfg::AnalysisConfig;
 
 use crate::{audio, spectrogram};
 
@@ -13,7 +13,7 @@ pub struct PersistentAppState {
 
 pub struct AppState {
     pub persistent: PersistentAppState,
-    pub ctx: AnalysisContext,
+    pub cfg: AnalysisConfig,
     pub playback: audio::Playback,
     pub spectrogram: spectrogram::Spectrogram,
 }
@@ -32,7 +32,7 @@ impl AppState {
             playback: audio::Playback::new(&mut persistent.audio, sample_tx),
             spectrogram: spectrogram::Spectrogram::new(&cc.egui_ctx, &cfg, sample_rx),
             persistent,
-            ctx: AnalysisContext::new(cfg),
+            cfg,
         }
     }
 }
@@ -44,18 +44,25 @@ impl eframe::App for AppState {
 
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::SidePanel::left("Configuration").show(ctx, |ui| {
-            audio::ui(ui, &self.ctx.cfg, &mut self.persistent.audio, &mut self.playback);
+            audio::ui(
+                ui,
+                &self.cfg,
+                &mut self.persistent.audio,
+                &mut self.playback,
+            );
             ui.separator();
-            self.persistent.spec_cfg.ui(ui, &self.ctx);
+            self.persistent.spec_cfg.ui(ui, &self.cfg);
             ui.separator();
             let export = ui.button("Export config to `config.toml`");
             if export.clicked() {
-                fs::write("config.toml", toml::to_string(&self.ctx.cfg).unwrap()).unwrap();
+                fs::write("config.toml", toml::to_string(&self.cfg).unwrap()).unwrap();
             }
         });
 
-        egui::CentralPanel::default()
-            .show(ctx, |ui| self.spectrogram.ui(ui, &self.ctx, &self.persistent.spec_cfg));
+        egui::CentralPanel::default().show(ctx, |ui| {
+            self.spectrogram
+                .ui(ui, &self.cfg, &self.persistent.spec_cfg)
+        });
 
         if self.persistent.audio.playing {
             ctx.request_repaint();
