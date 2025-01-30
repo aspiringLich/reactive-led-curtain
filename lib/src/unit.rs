@@ -1,6 +1,6 @@
 use derive_more::derive::Deref;
 
-#[derive(Clone, Copy, Debug, Deref, Default)]
+#[derive(Clone, Copy, Debug, Deref, Default, PartialEq, PartialOrd)]
 pub struct Db(pub f32);
 
 impl Db {

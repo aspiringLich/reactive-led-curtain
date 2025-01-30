@@ -1,10 +1,13 @@
 use serde::{Deserialize, Serialize};
 
+use crate::state::{hps, fft};
+
 #[derive(Deserialize, Serialize, Default)]
 #[serde(default)]
 pub struct AnalysisConfig {
     pub spectrogram: SpectrogramConfig,
-    pub fft: FftConfig,
+    pub fft: fft::FftConfig,
+    pub hps: hps::HpsConfig,
 }
 
 impl AnalysisConfig {
@@ -58,22 +61,6 @@ impl Default for SpectrogramConfig {
             image_resolution: 512,
             min_frequency: 5.0,
             max_frequency: 8000.0,
-        }
-    }
-}
-
-#[derive(Deserialize, Serialize )]
-#[serde(default)]
-pub struct FftConfig {
-    pub frame_len: usize,
-    pub hop_len: usize,
-}
-
-impl Default for FftConfig {
-    fn default() -> Self {
-        Self {
-            frame_len: 4096,
-            hop_len: 1024,
         }
     }
 }

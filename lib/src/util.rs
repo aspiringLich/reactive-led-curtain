@@ -6,7 +6,11 @@ pub fn vec_default<T: Default>(len: usize) -> Vec<T> {
     Vec::from_iter((0..len).into_iter().map(|_| Default::default()))
 }
 
-#[derive(Deref)]
+pub fn vec_clone<T: Clone>(elem: &T, len: usize) -> Vec<T> {
+    Vec::from_iter((0..len).into_iter().map(|_| elem.clone()))
+}
+
+#[derive(Deref, Clone, Debug)]
 pub struct RingBuffer<T: Default> {
     deq: VecDeque<T>,
 }

@@ -1,4 +1,5 @@
 use rustfft::{Fft, FftPlanner, num_complex::Complex};
+use serde::{Deserialize, Serialize};
 use std::{f32::consts::PI, sync::Arc};
 
 use crate::{cfg::AnalysisConfig, unit};
@@ -20,9 +21,7 @@ impl FftData {
             fft: FftPlanner::new().plan_fft_forward(cfg.fft.frame_len),
         }
     }
-}
 
-impl FftData {
     pub fn new(
         fft: Arc<dyn Fft<f32>>,
         cfg: &AnalysisConfig,
@@ -66,4 +65,20 @@ fn fft_samples(
         .collect::<Vec<_>>();
     fft.process(&mut buffer);
     buffer
+}
+
+#[derive(Deserialize, Serialize)]
+#[serde(default)]
+pub struct FftConfig {
+    pub frame_len: usize,
+    pub hop_len: usize,
+}
+
+impl Default for FftConfig {
+    fn default() -> Self {
+        Self {
+            frame_len: 4096,
+            hop_len: 1024,
+        }
+    }
 }

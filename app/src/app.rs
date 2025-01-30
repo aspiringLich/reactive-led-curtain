@@ -61,7 +61,7 @@ impl eframe::App for AppState {
 
         egui::CentralPanel::default().show(ctx, |ui| {
             self.spectrogram
-                .ui(ui, &self.cfg, &self.persistent.spec_cfg)
+                .ui(ui, &self.cfg, &self.persistent.spec_cfg);
         });
 
         if self.persistent.audio.playing {

@@ -230,9 +230,13 @@ impl Spectrogram {
 
             self.buffer.drain(0..hop_len);
             self.buffer.extend(&samples);
+            
+            take_mut::take(self, |mut s| {
+                s.state = AnalysisState::from_prev(cfg, s.state, s.buffer.iter().cloned());
+                s
+            });
 
-            self.state = AnalysisState::from_prev(cfg, &self.state, self.buffer.iter().cloned());
-            let spec = &self.state.fft_out.db;
+            let spec = &self.state.fft.db;
             let audible = &spec[cfg.min_idx()..cfg.max_idx()];
 
             self.spec.update_from_db(audible, scfg);

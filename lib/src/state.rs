@@ -1,29 +1,35 @@
 use derive_more::derive::{Deref, DerefMut};
 
-use crate::{cfg::AnalysisConfig, util::vec_default};
+use crate::{
+    cfg::AnalysisConfig,
+    util::{vec_clone, vec_default},
+};
 
 pub mod fft;
 pub mod hps;
 
-#[derive(Clone)]
 pub struct AnalysisState {
-    pub fft_out: fft::FftData,
+    pub fft: fft::FftData,
+    pub hps: hps::HpsData,
 }
 
 impl AnalysisState {
     pub fn blank(cfg: &AnalysisConfig) -> Self {
         Self {
-            fft_out: fft::FftData::blank(cfg),
+            fft: fft::FftData::blank(cfg),
+            hps: hps::HpsData::blank(cfg),
         }
     }
 
     pub fn from_prev(
         cfg: &AnalysisConfig,
-        prev: &AnalysisState,
+        prev: AnalysisState,
         samples: impl ExactSizeIterator<Item = i16>,
     ) -> Self {
+        let fft =  fft::FftData::new(prev.fft.fft.clone(), cfg, samples);
         Self {
-            fft_out: fft::FftData::new(prev.fft_out.fft.clone(), cfg, samples),
+            hps: prev.hps.advance(cfg, &fft),
+            fft,
         }
     }
 }
@@ -35,6 +41,11 @@ pub struct RawSpec<T>(Vec<T>);
 impl<T: Default> RawSpec<T> {
     pub fn blank_default(cfg: &AnalysisConfig) -> Self {
         Self(vec_default(cfg.fft.frame_len))
+    }
+}
+impl<T: Clone> RawSpec<T> {
+    pub fn blank_clone(elem: &T, cfg: &AnalysisConfig) -> Self {
+        Self(vec_clone(elem, cfg.fft.frame_len))
     }
 }
 
@@ -51,5 +62,10 @@ pub struct AudibleSpec<T>(Vec<T>);
 impl<T: Default> AudibleSpec<T> {
     pub fn blank_default(cfg: &AnalysisConfig) -> Self {
         Self(vec_default(cfg.max_aidx()))
+    }
+}
+impl<T: Clone> AudibleSpec<T> {
+    pub fn blank_clone(elem: &T, cfg: &AnalysisConfig) -> Self {
+        Self(vec_clone(elem, cfg.max_aidx()))
     }
 }
