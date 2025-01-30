@@ -1,6 +1,7 @@
-use std::{collections::VecDeque, iter, sync::mpsc::Receiver};
-
-use crate::{cfg::AnalysisConfig, fft::{self, FftOutput}};
+use crate::{
+    cfg::AnalysisConfig,
+    fft::{self, FftOutput},
+};
 
 #[derive(Clone)]
 pub struct AnalysisState {
@@ -10,7 +11,7 @@ pub struct AnalysisState {
 impl AnalysisState {
     pub fn blank(cfg: &AnalysisConfig) -> Self {
         Self {
-            fft_out: FftOutput::blank(cfg)
+            fft_out: FftOutput::blank(cfg),
         }
     }
 
@@ -20,7 +21,7 @@ impl AnalysisState {
         samples: impl ExactSizeIterator<Item = i16>,
     ) -> Self {
         Self {
-            fft_out: fft::FftOutput::new(prev.fft_out.fft.clone(), samples),
+            fft_out: fft::FftOutput::new(prev.fft_out.fft.clone(), cfg, samples),
         }
     }
 }

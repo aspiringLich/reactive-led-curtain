@@ -1,12 +1,16 @@
+use derive_more::derive::{Deref, DerefMut};
 use rustfft::{Fft, FftPlanner, num_complex::Complex};
 use std::{f32::consts::PI, sync::Arc};
 
 use crate::{cfg::AnalysisConfig, unit};
 
+#[derive(Deref, DerefMut, Clone, Debug, Default)]
+pub struct AudibleVec<T>(pub(crate) Vec<T>);
+
 #[derive(Clone)]
 pub struct FftOutput {
     pub raw: Vec<Complex<f32>>,
-    pub db: Vec<unit::Db>,
+    pub db: AudibleVec<unit::Db>,
     pub fft: Arc<dyn Fft<f32>>,
 }
 
@@ -14,22 +18,29 @@ impl FftOutput {
     pub fn blank(cfg: &AnalysisConfig) -> Self {
         Self {
             raw: vec![Default::default(); cfg.fft.frame_len],
-            db: vec![Default::default(); cfg.fft.frame_len],
+            db: AudibleVec(vec![Default::default(); cfg.max_aidx()]),
             fft: FftPlanner::new().plan_fft_forward(cfg.fft.frame_len),
         }
     }
 }
 
 impl FftOutput {
-    pub fn new(fft: Arc<dyn Fft<f32>>, samples: impl ExactSizeIterator<Item = i16>) -> Self {
+    pub fn new(
+        fft: Arc<dyn Fft<f32>>,
+        cfg: &AnalysisConfig,
+        samples: impl ExactSizeIterator<Item = i16>,
+    ) -> Self {
         let raw = fft_samples(fft.as_ref(), samples);
-        let db = raw
-            .iter()
+        let db = raw[cfg.min_idx()..cfg.max_idx()]
             .into_iter()
             .map(|a| unit::Db::from_amplitude(a.norm()))
             .collect::<Vec<_>>();
 
-        Self { raw, db, fft }
+        Self {
+            raw,
+            db: AudibleVec(db),
+            fft,
+        }
     }
 }
 
@@ -42,7 +53,10 @@ fn hanning_window_multiplier(i: usize, len: usize) -> f32 {
 }
 
 /// Runs a discrete fourier transform on a buffer of audio samples
-fn fft_samples(fft: &dyn Fft<f32>, samples: impl ExactSizeIterator<Item = i16>) -> Vec<Complex<f32>> {
+fn fft_samples(
+    fft: &dyn Fft<f32>,
+    samples: impl ExactSizeIterator<Item = i16>,
+) -> Vec<Complex<f32>> {
     debug_assert_eq!(fft.len(), samples.len());
     let mut buffer = samples
         .into_iter()
