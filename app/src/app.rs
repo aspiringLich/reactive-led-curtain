@@ -48,6 +48,10 @@ impl eframe::App for AppState {
             ui.separator();
             self.persistent.spec_cfg.ui(ui, &self.ctx);
             ui.separator();
+            let export = ui.button("Export config to `config.toml`");
+            if export.clicked() {
+                fs::write("config.toml", toml::to_string(&self.ctx.cfg).unwrap()).unwrap();
+            }
         });
 
         egui::CentralPanel::default()

@@ -1,0 +1,9 @@
+[spectrogram]
+keep_states = 512
+image_resolution = 512
+max_frequency = 8000.0
+min_frequency = 5.0
+
+[fft]
+frame_len = 4096
+hop_len = 1024

@@ -1,13 +1,9 @@
-use garde::Validate;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Deserialize, Default, Validate)]
+#[derive(Deserialize, Serialize, Default)]
 #[serde(default)]
-#[garde(context(AnalysisConfig))]
 pub struct AnalysisConfig {
-    #[garde(dive)]
     pub spectrogram: SpectrogramConfig,
-    #[garde(dive)]
     pub fft: FftConfig,
 }
 
@@ -36,17 +32,12 @@ impl AnalysisConfig {
     }
 }
 
-#[derive(Deserialize, Validate)]
+#[derive(Deserialize, Serialize)]
 #[serde(default)]
-#[garde(context(AnalysisConfig))]
 pub struct SpectrogramConfig {
-    #[garde(range(min = 0, max = 4096))]
     pub keep_states: usize,
-    #[garde(range(min = 0, max = 4096))]
     pub image_resolution: usize,
-    #[garde(skip)]
     pub max_frequency: f32,
-    #[garde(skip)]
     pub min_frequency: f32,
 }
 
@@ -61,21 +52,10 @@ impl Default for SpectrogramConfig {
     }
 }
 
-fn fraction_of_frame_len(len: &usize, cfg: &AnalysisConfig) -> garde::Result {
-    if *len % cfg.fft.frame_len == 0 {
-        Ok(())
-    } else {
-        Err(garde::Error::new("Expected to be divisible by `frame_len`"))
-    }
-}
-
-#[derive(Deserialize, Validate)]
+#[derive(Deserialize, Serialize )]
 #[serde(default)]
-#[garde(context(AnalysisConfig))]
 pub struct FftConfig {
-    #[garde(skip)]
     pub frame_len: usize,
-    #[garde(custom(fraction_of_frame_len))]
     pub hop_len: usize,
 }
 
