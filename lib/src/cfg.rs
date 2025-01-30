@@ -33,7 +33,7 @@ impl AnalysisConfig {
     /// Turns an index into the raw spectrogram into an index into the audible
     /// spectrogram range
     pub fn idx_to_aidx(&self, i: usize) -> usize {
-        assert!(i < self.max_idx());
+        assert!(i <= self.max_idx());
         i - self.min_idx()
     }
     

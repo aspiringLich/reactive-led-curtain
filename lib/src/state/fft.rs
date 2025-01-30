@@ -1,44 +1,43 @@
-use derive_more::derive::{Deref, DerefMut};
 use rustfft::{Fft, FftPlanner, num_complex::Complex};
 use std::{f32::consts::PI, sync::Arc};
 
 use crate::{cfg::AnalysisConfig, unit};
 
-#[derive(Deref, DerefMut, Clone, Debug, Default)]
-pub struct AudibleVec<T>(pub(crate) Vec<T>);
+use super::{AudibleSpec, RawSpec};
 
 #[derive(Clone)]
-pub struct FftOutput {
-    pub raw: Vec<Complex<f32>>,
-    pub db: AudibleVec<unit::Db>,
+pub struct FftData {
+    pub raw: RawSpec<Complex<f32>>,
+    pub db: AudibleSpec<unit::Db>,
     pub fft: Arc<dyn Fft<f32>>,
 }
 
-impl FftOutput {
+impl FftData {
     pub fn blank(cfg: &AnalysisConfig) -> Self {
         Self {
-            raw: vec![Default::default(); cfg.fft.frame_len],
-            db: AudibleVec(vec![Default::default(); cfg.max_aidx()]),
+            raw: RawSpec::blank_default(cfg),
+            db: AudibleSpec::blank_default(cfg),
             fft: FftPlanner::new().plan_fft_forward(cfg.fft.frame_len),
         }
     }
 }
 
-impl FftOutput {
+impl FftData {
     pub fn new(
         fft: Arc<dyn Fft<f32>>,
         cfg: &AnalysisConfig,
         samples: impl ExactSizeIterator<Item = i16>,
     ) -> Self {
-        let raw = fft_samples(fft.as_ref(), samples);
-        let db = raw[cfg.min_idx()..cfg.max_idx()]
+        let raw = RawSpec(fft_samples(fft.as_ref(), samples));
+        let db = raw
+            .audible_slice(cfg)
             .into_iter()
             .map(|a| unit::Db::from_amplitude(a.norm()))
             .collect::<Vec<_>>();
 
         Self {
             raw,
-            db: AudibleVec(db),
+            db: AudibleSpec(db),
             fft,
         }
     }
