@@ -8,3 +8,4 @@ derive_more = { version = "1.0.0", features = ["deref", "deref_mut"] }
 rustfft = "6.2.0"
 serde = { workspace = true }
 garde = { workspace = true }
+median = "0.3.2"

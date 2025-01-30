@@ -4,7 +4,11 @@ use egui::{
     Color32, ColorImage, ComboBox, Context, Image, Slider, TextureHandle, TextureOptions, Ui,
 };
 
-use lib::{cfg::AnalysisConfig, state::AnalysisState, unit};
+use lib::{
+    cfg::AnalysisConfig,
+    state::{AnalysisState, AudibleSpec},
+    unit,
+};
 use serde::{Deserialize, Serialize};
 
 use crate::cmap;
@@ -15,6 +19,7 @@ pub struct SpecConfig {
     db_min: f32,
     db_max: f32,
     scale: SpecScale,
+    data: SpecData,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Copy)]
@@ -23,12 +28,20 @@ pub enum SpecScale {
     Log,
 }
 
+#[derive(Serialize, Deserialize, PartialEq, Clone, Copy)]
+pub enum SpecData {
+    Normal,
+    H,
+    P,
+}
+
 impl Default for SpecConfig {
     fn default() -> Self {
         Self {
             db_min: 0.0,
             db_max: 50.0,
             scale: SpecScale::Linear,
+            data: SpecData::Normal,
         }
     }
 }
@@ -71,6 +84,19 @@ impl SpecConfig {
                         ui.selectable_value(&mut self.scale, SpecScale::Log, "log");
                     });
                 ui.end_row();
+
+                ui.label("Input");
+                ComboBox::new("spec_input", "")
+                    .selected_text(match self.data {
+                        SpecData::Normal => "normal",
+                        SpecData::H => "harmonic",
+                        SpecData::P => "percussive",
+                    })
+                    .show_ui(ui, |ui| {
+                        ui.selectable_value(&mut self.data, SpecData::Normal, "normal");
+                        ui.selectable_value(&mut self.data, SpecData::H, "harmonic");
+                        ui.selectable_value(&mut self.data, SpecData::P, "percussive");
+                    });
             });
         ui.label(format!(
             "Frequency Range: {}, {}",
@@ -118,7 +144,7 @@ impl SpectrogramImage {
         self.dirty = true;
     }
 
-    fn update_from_db(&mut self, spec: &[unit::Db], cfg: &SpecConfig) {
+    fn update_from_db(&mut self, spec: &AudibleSpec<unit::Db>, cfg: &SpecConfig) {
         let [_, h] = self.size();
         let scale = self.scale;
         self.shift_img(|i| {
@@ -187,7 +213,7 @@ impl SpectrogramImageSet {
         }
     }
 
-    fn update_from_db(&mut self, db: &[unit::Db], cfg: &SpecConfig) {
+    fn update_from_db(&mut self, db: &AudibleSpec<unit::Db>, cfg: &SpecConfig) {
         self.linear.update_from_db(db, cfg);
         self.log.update_from_db(db, cfg);
     }
@@ -230,16 +256,20 @@ impl Spectrogram {
 
             self.buffer.drain(0..hop_len);
             self.buffer.extend(&samples);
-            
-            take_mut::take(self, |mut s| {
-                s.state = AnalysisState::from_prev(cfg, s.state, s.buffer.iter().cloned());
-                s
-            });
 
-            let spec = &self.state.fft.db;
-            let audible = &spec[cfg.min_idx()..cfg.max_idx()];
+            take_mut::take_or_recover(
+                &mut self.state,
+                || AnalysisState::blank(cfg),
+                |s| AnalysisState::from_prev(cfg, s, self.buffer.iter().cloned()),
+            );
 
-            self.spec.update_from_db(audible, scfg);
+            let data = match scfg.data {
+                SpecData::Normal => &self.state.fft.db,
+                SpecData::H => &self.state.hps.h_enhanced,
+                SpecData::P => &self.state.hps.p_enhanced,
+            };
+
+            self.spec.update_from_db(data, scfg);
         }
 
         ui.add(
