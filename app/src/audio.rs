@@ -8,13 +8,12 @@ use std::{
 };
 
 use egui::{Button, ComboBox, Slider, TextEdit, Ui, mutex::Mutex};
+use lib::cfg::AnalysisConfig;
 use rodio::{
     Decoder, OutputStream, Sink, Source,
     buffer::SamplesBuffer,
     source::{EmptyCallback, TrackPosition},
 };
-
-use lib::{SAMPLE_SIZE, SAMPLE_WINDOWS};
 
 type AudioDecoder = TrackPosition<Decoder<BufReader<File>>>;
 
@@ -78,7 +77,7 @@ fn read_dir(dir: &Path) -> io::Result<Vec<String>> {
     Ok(out)
 }
 
-pub fn ui(ui: &mut Ui, audio: &mut Audio, playback: &mut Playback) {
+pub fn ui(ui: &mut Ui, cfg: &AnalysisConfig, audio: &mut Audio, playback: &mut Playback) {
     ui.heading("Playback");
     ui.horizontal(|ui| {
         ui.label("Folder");
@@ -159,12 +158,12 @@ pub fn ui(ui: &mut Ui, audio: &mut Audio, playback: &mut Playback) {
             playback.decoder = None;
             return;
         };
-
-        let target_sample_size = SAMPLE_SIZE / SAMPLE_WINDOWS;
-        let target_samples = decoder.sample_rate() as usize / target_sample_size;
+        
+        let hop_len = cfg.fft.hop_len;
+        let target_samples = decoder.sample_rate() as usize / hop_len;
 
         while playback.sink.len() < target_samples * 2 {
-            let samples = decoder.take(target_sample_size).collect::<Vec<_>>();
+            let samples = decoder.take(hop_len).collect::<Vec<_>>();
             let buffer = SamplesBuffer::new(
                 decoder.channels(),
                 decoder.sample_rate(),
@@ -172,7 +171,7 @@ pub fn ui(ui: &mut Ui, audio: &mut Audio, playback: &mut Playback) {
             );
 
             playback.sink.append(buffer);
-            if samples.len() == target_sample_size {
+            if samples.len() == hop_len {
                 SAMPLE_QUEUE
                     .get_or_init(|| Default::default())
                     .lock()

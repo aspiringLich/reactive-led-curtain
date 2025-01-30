@@ -4,7 +4,11 @@ use egui::{
     Color32, ColorImage, ComboBox, Context, Image, Slider, TextureHandle, TextureOptions, Ui,
 };
 
-use lib::{fft::{self, hz_to_idx}, state::AnalysisState, unit, SAMPLE_SIZE, SAMPLE_WINDOWS};
+use lib::{
+    state::{AnalysisContext, AnalysisState},
+    cfg::AnalysisConfig,
+    unit,
+};
 use serde::{Deserialize, Serialize};
 
 use crate::cmap;
@@ -33,11 +37,10 @@ impl Default for SpecConfig {
     }
 }
 
-const MAXF: f32 = 8_192.0;
-const MINF: f32 = 5.0;
-
 impl SpecConfig {
-    pub fn ui(&mut self, ui: &mut Ui) {
+    pub fn ui(&mut self, ui: &mut Ui, ctx: &AnalysisContext) {
+        let AnalysisContext { cfg, .. } = ctx;
+
         ui.heading("Spectrogram");
         egui::Grid::new("spec_grid")
             .num_columns(2)
@@ -75,8 +78,11 @@ impl SpecConfig {
                     });
                 ui.end_row();
             });
-        ui.label(format!("Frequency Range: {MINF}, {MAXF}"));
-        ui.label(format!("Indeces: {}", fft::hz_to_idx(MAXF) - fft::hz_to_idx(MINF)));
+        ui.label(format!(
+            "Frequency Range: {}, {}",
+            cfg.spectrogram.min_frequency, cfg.spectrogram.max_frequency
+        ));
+        ui.label(format!("Indeces: {}", cfg.max_idx() - cfg.min_idx()));
     }
 }
 
@@ -182,7 +188,7 @@ impl SpectrogramImageSet {
                 ctx,
                 &format!("{name}_log"),
                 Self::scale_img_size(SpecScale::Log),
-                |x| 1.0 - (B - B * x + x).log(B)
+                |x| 1.0 - (B - B * x + x).log(B),
             ),
         }
     }
@@ -191,7 +197,7 @@ impl SpectrogramImageSet {
         self.linear.update_from_db(db, cfg);
         self.log.update_from_db(db, cfg);
     }
-    
+
     fn tex(&mut self, scale: SpecScale) -> TextureHandle {
         match scale {
             SpecScale::Linear => self.linear.tex(),
@@ -208,7 +214,7 @@ pub struct Spectrogram {
 }
 
 impl Spectrogram {
-    pub fn new(ctx: &Context, sample_rx: Receiver<Vec<i16>>) -> Self {
+    pub fn new(ctx: &Context, cfg: &AnalysisConfig, sample_rx: Receiver<Vec<i16>>) -> Self {
         // let img = ColorImage::new([IMG_WIDTH, IDX_MAX], Color32::BLACK);
         // let img_log = ColorImage::new([IMG_WIDTH, IDX_MAX], Color32::BLACK);
         Self {
@@ -218,28 +224,29 @@ impl Spectrogram {
             // img_log,
             spec: SpectrogramImageSet::new(ctx, "spectrogram"),
             sample_rx,
-            state: Default::default(),
-            buffer: VecDeque::from_iter(repeat(0).take(SAMPLE_SIZE)),
+            state: AnalysisState::blank(cfg),
+            buffer: VecDeque::from_iter(repeat(0).take(cfg.fft.frame_len)),
         }
     }
 
-    pub fn ui(&mut self, ui: &mut Ui, cfg: &SpecConfig) {
+    pub fn ui(&mut self, ui: &mut Ui, ctx: &AnalysisContext, scfg: &SpecConfig) {
         while let Ok(samples) = self.sample_rx.try_recv() {
-            let window_len = SAMPLE_SIZE / SAMPLE_WINDOWS;
-            assert_eq!(samples.len(), window_len);
-            self.buffer.drain(0..window_len);
+            let hop_len = ctx.cfg.fft.hop_len;
+            let cfg = &ctx.cfg;
+            assert_eq!(samples.len(), hop_len);
+
+            self.buffer.drain(0..hop_len);
             self.buffer.extend(&samples);
 
-            self.state = AnalysisState::from_prev(&self.state, self.buffer.iter().cloned());
+            self.state = AnalysisState::from_prev(ctx, &self.state, self.buffer.iter().cloned());
             let spec = &self.state.fft_out.db;
-            let (idx_min, idx_max) = (hz_to_idx(MINF), hz_to_idx(MAXF));
-            let audible = &spec[idx_min..idx_max];
-            
-            self.spec.update_from_db(audible, cfg);
+            let audible = &spec[cfg.min_idx()..cfg.max_idx()];
+
+            self.spec.update_from_db(audible, scfg);
         }
 
         ui.add(
-            Image::new(&self.spec.tex(cfg.scale))
+            Image::new(&self.spec.tex(scfg.scale))
                 .maintain_aspect_ratio(false)
                 .shrink_to_fit(),
         );
