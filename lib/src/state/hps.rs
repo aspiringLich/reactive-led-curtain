@@ -1,13 +1,13 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{cfg::AnalysisConfig, unit::Db};
+use crate::{cfg::AnalysisConfig, unit::{Db, Power}};
 
 use super::{AudibleSpec, fft::FftData};
 
 pub struct HpsData {
-    pub past_magnitudes: AudibleSpec<median::Filter<f32>>,
-    pub h_enhanced: AudibleSpec<f32>,
-    pub p_enhanced: AudibleSpec<f32>,
+    pub past_magnitudes: AudibleSpec<median::Filter<Power>>,
+    pub h_enhanced: AudibleSpec<Power>,
+    pub p_enhanced: AudibleSpec<Power>,
     pub harmonic: AudibleSpec<Db>,
     pub percussive: AudibleSpec<Db>,
     pub residual: AudibleSpec<Db>,
@@ -29,13 +29,13 @@ impl HpsData {
         let hps = &cfg.hps;
 
         for (i, filter) in self.past_magnitudes.iter_mut().enumerate() {
-            filter.consume(fft.magnitude[i]);
+            filter.consume(fft.power[i]);
         }
 
         self.h_enhanced = AudibleSpec(self.past_magnitudes.iter().map(|buf| buf.median()).collect());
         let mut filter = median::Filter::new(hps.p_filter_span);
         self.p_enhanced = AudibleSpec(
-            fft.magnitude
+            fft.power
                 .iter()
                 .map(|d| {
                     filter.consume(*d);
@@ -45,7 +45,7 @@ impl HpsData {
         );
 
         for (i, db) in fft.db.iter().enumerate() {
-            let separation = self.h_enhanced[i] / (self.p_enhanced[i] + f32::EPSILON);
+            let separation = *self.h_enhanced[i] / (*self.p_enhanced[i] + f32::EPSILON);
             if separation > hps.separation_factor {
                 self.harmonic[i] = *db;
                 self.percussive[i] = Db::default();

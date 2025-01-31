@@ -1,7 +1,7 @@
 use std::{collections::VecDeque, iter::repeat, sync::mpsc::Receiver};
 
 use egui::{
-    Color32, ColorImage, ComboBox, Context, Image, Slider, TextureHandle, TextureOptions, Ui,
+    Color32, ColorImage, Context, Image, Slider, TextureHandle, TextureOptions, Ui,
 };
 
 use lib::{

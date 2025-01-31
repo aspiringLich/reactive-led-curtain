@@ -71,8 +71,8 @@ impl<T: Clone> AudibleSpec<T> {
     }
 }
 
-impl AudibleSpec<f32> {
+impl<T: Into<Db> + Copy> AudibleSpec<T> {
     pub fn into_db(&self) -> AudibleSpec<Db> {
-        AudibleSpec(self.iter().map(|a| Db::from_amplitude(*a)).collect())
+        AudibleSpec(self.iter().map(|a| (*a).into()).collect())
     }
 }
