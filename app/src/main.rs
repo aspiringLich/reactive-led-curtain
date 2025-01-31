@@ -2,11 +2,13 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 #![feature(let_chains)]
 
+use app::AppState;
+
 mod app;
 mod audio;
 mod cmap;
 mod spectrogram;
-pub use app::AppState;
+mod util;
 
 // When compiling natively:
 #[cfg(not(target_arch = "wasm32"))]

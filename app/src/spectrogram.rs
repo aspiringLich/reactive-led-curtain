@@ -10,8 +10,9 @@ use lib::{
     unit,
 };
 use serde::{Deserialize, Serialize};
+use strum::{Display, EnumIter};
 
-use crate::cmap;
+use crate::{cmap, util};
 
 #[derive(Serialize, Deserialize)]
 #[serde(default)]
@@ -22,17 +23,17 @@ pub struct SpecConfig {
     data: SpecData,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Copy)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Copy, EnumIter, Display)]
 pub enum SpecScale {
     Linear,
     Log,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Copy)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Copy, EnumIter, Display)]
 pub enum SpecData {
     Normal,
-    H,
-    P,
+    HarmonicallyEnhanced,
+    PercussivelyEnhanced,
 }
 
 impl Default for SpecConfig {
@@ -74,29 +75,11 @@ impl SpecConfig {
                 }
 
                 ui.label("Scale");
-                ComboBox::new("spec_scale", "")
-                    .selected_text(match self.scale {
-                        SpecScale::Linear => "linear",
-                        SpecScale::Log => "log",
-                    })
-                    .show_ui(ui, |ui| {
-                        ui.selectable_value(&mut self.scale, SpecScale::Linear, "linear");
-                        ui.selectable_value(&mut self.scale, SpecScale::Log, "log");
-                    });
+                util::enum_combobox(ui, "spec_scale", "", &mut self.scale);
                 ui.end_row();
 
                 ui.label("Input");
-                ComboBox::new("spec_input", "")
-                    .selected_text(match self.data {
-                        SpecData::Normal => "normal",
-                        SpecData::H => "harmonic",
-                        SpecData::P => "percussive",
-                    })
-                    .show_ui(ui, |ui| {
-                        ui.selectable_value(&mut self.data, SpecData::Normal, "normal");
-                        ui.selectable_value(&mut self.data, SpecData::H, "harmonic");
-                        ui.selectable_value(&mut self.data, SpecData::P, "percussive");
-                    });
+                util::enum_combobox(ui, "spec_data", "", &mut self.data);
             });
         ui.label(format!(
             "Frequency Range: {}, {}",
@@ -265,8 +248,8 @@ impl Spectrogram {
 
             let data = match scfg.data {
                 SpecData::Normal => &self.state.fft.db,
-                SpecData::H => &self.state.hps.h_enhanced,
-                SpecData::P => &self.state.hps.p_enhanced,
+                SpecData::HarmonicallyEnhanced => &self.state.hps.h_enhanced,
+                SpecData::PercussivelyEnhanced => &self.state.hps.p_enhanced,
             };
 
             self.spec.update_from_db(data, scfg);
