@@ -9,5 +9,6 @@ frame_len = 4096
 hop_len = 1024
 
 [hps]
-p_filter_span = 9
-h_filter_span = 46
+p_filter_span = 10
+h_filter_span = 50
+separation_factor = 2.0

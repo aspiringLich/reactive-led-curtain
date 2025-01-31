@@ -51,7 +51,7 @@ impl eframe::App for AppState {
                 &mut self.playback,
             );
             ui.separator();
-            self.persistent.spec_cfg.ui(ui, &self.cfg);
+            self.persistent.spec_cfg.ui(ui, &mut self.cfg);
             ui.separator();
             let export = ui.button("Export config to `config.toml`");
             if export.clicked() {

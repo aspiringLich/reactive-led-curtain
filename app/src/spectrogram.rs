@@ -34,6 +34,9 @@ pub enum SpecData {
     Normal,
     HarmonicallyEnhanced,
     PercussivelyEnhanced,
+    Harmonic,
+    Percussive,
+    Residual,
 }
 
 impl Default for SpecConfig {
@@ -48,7 +51,7 @@ impl Default for SpecConfig {
 }
 
 impl SpecConfig {
-    pub fn ui(&mut self, ui: &mut Ui, cfg: &AnalysisConfig) {
+    pub fn ui(&mut self, ui: &mut Ui, cfg: &mut AnalysisConfig) {
         ui.heading("Spectrogram");
         egui::Grid::new("spec_grid")
             .num_columns(2)
@@ -80,6 +83,11 @@ impl SpecConfig {
 
                 ui.label("Input");
                 util::enum_combobox(ui, "spec_data", "", &mut self.data);
+                ui.end_row();
+
+                ui.label("β");
+                ui.add(Slider::new(&mut cfg.hps.separation_factor, 1.0..=2.0));
+                ui.end_row();
             });
         ui.label(format!(
             "Frequency Range: {}, {}",
@@ -158,7 +166,7 @@ impl SpectrogramImage {
 
     fn tex(&mut self) -> TextureHandle {
         if self.dirty {
-            self.tex.set(self.img.clone(), TextureOptions::NEAREST);
+            self.tex.set(self.img.clone(), TextureOptions::LINEAR);
             self.dirty = false;
         }
         self.tex.clone()
@@ -248,8 +256,11 @@ impl Spectrogram {
 
             let data = match scfg.data {
                 SpecData::Normal => &self.state.fft.db,
-                SpecData::HarmonicallyEnhanced => &self.state.hps.h_enhanced,
-                SpecData::PercussivelyEnhanced => &self.state.hps.p_enhanced,
+                SpecData::HarmonicallyEnhanced => &self.state.hps.h_enhanced.into_db(),
+                SpecData::PercussivelyEnhanced => &self.state.hps.p_enhanced.into_db(),
+                SpecData::Harmonic => &self.state.hps.harmonic,
+                SpecData::Percussive => &self.state.hps.percussive,
+                SpecData::Residual => &self.state.hps.residual,                
             };
 
             self.spec.update_from_db(data, scfg);

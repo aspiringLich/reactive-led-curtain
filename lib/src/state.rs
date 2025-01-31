@@ -2,6 +2,7 @@ use derive_more::derive::{Deref, DerefMut};
 
 use crate::{
     cfg::AnalysisConfig,
+    unit::Db,
     util::{vec_clone, vec_default},
 };
 
@@ -26,7 +27,7 @@ impl AnalysisState {
         prev: AnalysisState,
         samples: impl ExactSizeIterator<Item = i16>,
     ) -> Self {
-        let fft =  fft::FftData::new(prev.fft.fft.clone(), cfg, samples);
+        let fft = fft::FftData::new(prev.fft.fft.clone(), cfg, samples);
         Self {
             hps: prev.hps.advance(cfg, &fft),
             fft,
@@ -67,5 +68,11 @@ impl<T: Default> AudibleSpec<T> {
 impl<T: Clone> AudibleSpec<T> {
     pub fn blank_clone(elem: &T, cfg: &AnalysisConfig) -> Self {
         Self(vec_clone(elem, cfg.max_aidx()))
+    }
+}
+
+impl AudibleSpec<f32> {
+    pub fn into_db(&self) -> AudibleSpec<Db> {
+        AudibleSpec(self.iter().map(|a| Db::from_amplitude(*a)).collect())
     }
 }
