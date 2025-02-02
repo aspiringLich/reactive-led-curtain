@@ -32,11 +32,7 @@ impl FftData {
         samples: impl ExactSizeIterator<Item = i16>,
     ) -> Self {
         let raw = RawSpec(fft_samples(fft.as_ref(), samples));
-        let audible = raw
-            .audible_slice(cfg)
-            .into_iter()
-            .cloned()
-            .collect();
+        let audible = raw.audible_slice(cfg).into_iter().cloned().collect();
         let db = raw
             .audible_slice(cfg)
             .into_iter()
@@ -67,11 +63,11 @@ fn hanning_window_multiplier(i: usize, len: usize) -> f32 {
 }
 
 /// Runs a discrete fourier transform on a buffer of audio samples
-fn fft_samples(
+pub fn fft_samples(
     fft: &dyn Fft<f32>,
     samples: impl ExactSizeIterator<Item = i16>,
 ) -> Vec<Complex<f32>> {
-    debug_assert_eq!(fft.len(), samples.len());
+    assert_eq!(fft.len(), samples.len());
     let mut buffer = samples
         .into_iter()
         .map(|i| (i as f32) / i16::MAX as f32)
@@ -81,6 +77,21 @@ fn fft_samples(
         .collect::<Vec<_>>();
     fft.process(&mut buffer);
     buffer
+}
+
+pub fn ifft_samples(
+    fft: &dyn Fft<f32>,
+    mut frequencies: Vec<Complex<f32>>,
+) -> impl Iterator<Item = i16> {
+    assert_eq!(fft.len(), frequencies.len());
+
+    fft.process(&mut frequencies);
+    frequencies
+        .into_iter()
+        .map(|c| c.re / fft.len() as f32)
+        .enumerate()
+        .map(|(i, sample)| sample / hanning_window_multiplier(i, fft.len()))
+        .map(|f| (f * i16::MAX as f32) as i16)
 }
 
 #[derive(Deserialize, Serialize)]

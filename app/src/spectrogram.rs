@@ -220,8 +220,8 @@ impl SpectrogramImageSet {
 pub struct Spectrogram {
     spec: SpectrogramImageSet,
     sample_rx: Receiver<Vec<i16>>,
-    state: AnalysisState,
-    buffer: VecDeque<i16>,
+    pub state: AnalysisState,
+    pub buffer: VecDeque<i16>,
 }
 
 impl Spectrogram {

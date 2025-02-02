@@ -37,7 +37,7 @@ impl AnalysisState {
 
 /// Raw spectrogram data right out of &Fft
 #[derive(Deref, DerefMut, Clone, Debug, Default)]
-pub struct RawSpec<T>(Vec<T>);
+pub struct RawSpec<T>(pub Vec<T>);
 
 impl<T: Default> RawSpec<T> {
     pub fn blank_default(cfg: &AnalysisConfig) -> Self {
@@ -53,6 +53,10 @@ impl<T: Clone> RawSpec<T> {
 impl<T> RawSpec<T> {
     pub fn audible_slice(&self, cfg: &AnalysisConfig) -> &[T] {
         &self.0[cfg.min_idx()..cfg.max_idx()]
+    }
+
+    pub fn audible_slice_mut(&mut self, cfg: &AnalysisConfig) -> &mut [T] {
+        &mut self.0[cfg.min_idx()..cfg.max_idx()]
     }
 }
 

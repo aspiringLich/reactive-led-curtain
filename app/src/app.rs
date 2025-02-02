@@ -1,5 +1,6 @@
 use std::{fs, sync::mpsc::channel};
 
+use egui::Frame;
 use lib::cfg::AnalysisConfig;
 
 use crate::{audio, spectrogram};
@@ -43,12 +44,19 @@ impl eframe::App for AppState {
     }
 
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        let panel = egui::CentralPanel::default().frame(Frame::none().inner_margin(0.0));
+        panel.show(ctx, |ui| {
+            self.spectrogram
+                .ui(ui, &self.cfg, &self.persistent.spec_cfg);
+        });
+
         egui::SidePanel::left("Configuration").show(ctx, |ui| {
-            audio::ui(
-                ui,
+            audio::ui(ui, &mut self.persistent.audio, &mut self.playback);
+            audio::playback(
                 &self.cfg,
                 &mut self.persistent.audio,
                 &mut self.playback,
+                &self.spectrogram.state,
             );
             ui.separator();
             self.persistent.spec_cfg.ui(ui, &mut self.cfg);
@@ -57,11 +65,6 @@ impl eframe::App for AppState {
             if export.clicked() {
                 fs::write("config.toml", toml::to_string(&self.cfg).unwrap()).unwrap();
             }
-        });
-
-        egui::CentralPanel::default().show(ctx, |ui| {
-            self.spectrogram
-                .ui(ui, &self.cfg, &self.persistent.spec_cfg);
         });
 
         if self.persistent.audio.playing {
