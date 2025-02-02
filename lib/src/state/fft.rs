@@ -58,7 +58,7 @@ impl FftData {
 //     0.54 - (0.46 * (2.0 * PI * i as f32 / f32::cos(len as f32 - 1.0)))
 // }
 
-fn hanning_window_multiplier(i: usize, len: usize) -> f32 {
+fn hann_window(i: usize, len: usize) -> f32 {
     0.5 * (1.0 - f32::cos(2.0 * PI * i as f32 / (len - 1) as f32))
 }
 
@@ -72,25 +72,37 @@ pub fn fft_samples(
         .into_iter()
         .map(|i| (i as f32) / i16::MAX as f32)
         .enumerate()
-        .map(|(i, sample)| sample * hanning_window_multiplier(i, fft.len()))
+        .map(|(i, sample)| sample * hann_window(i, fft.len()))
         .map(|re| Complex { re, im: 0.0 })
         .collect::<Vec<_>>();
     fft.process(&mut buffer);
     buffer
 }
 
-pub fn ifft_samples(
+pub fn istft_samples(
     fft: &dyn Fft<f32>,
     mut frequencies: Vec<Complex<f32>>,
+    hop_len: usize,
 ) -> impl Iterator<Item = i16> {
     assert_eq!(fft.len(), frequencies.len());
 
     fft.process(&mut frequencies);
-    frequencies
+
+    let hops = fft.len() / hop_len;
+    (0..hop_len)
         .into_iter()
-        .map(|c| c.re / fft.len() as f32)
-        .enumerate()
-        .map(|(i, sample)| sample / hanning_window_multiplier(i, fft.len()))
+        .map(move |r| {
+            let mut sum = 0.0;
+            let mut w_sum = 0.0;
+            let r = hop_len - r - 1;
+            for n in 1..=hops {
+                let i = n * hop_len - r - 1;
+                let w = hann_window(i, fft.len());
+                sum += frequencies[i].re * w / fft.len() as f32;
+                w_sum += w * w;
+            }
+            sum / w_sum
+        })
         .map(|f| (f * i16::MAX as f32) as i16)
 }
 

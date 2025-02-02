@@ -210,12 +210,12 @@ pub fn playback(
             );
 
             if audio.hps {
-                let mut spec = RawSpec::<Complex<f32>>::blank_default(cfg);
-                for (i, val) in spec.audible_slice_mut(cfg).iter_mut().enumerate() {
-                    *val += state.hps.harmonic[i] * audio.harmonic as u32 as f32;
-                    *val += state.hps.residual[i] * audio.residual as u32 as f32;
-                    *val += state.hps.percussive[i] * audio.percussive as u32 as f32;
-                }
+                // let mut spec = RawSpec::<Complex<f32>>::blank_default(cfg);
+                // for (i, val) in spec.audible_slice_mut(cfg).iter_mut().enumerate() {
+                //     *val += state.hps.harmonic[i] * audio.harmonic as u32 as f32;
+                //     *val += state.hps.residual[i] * audio.residual as u32 as f32;
+                //     *val += state.hps.percussive[i] * audio.percussive as u32 as f32;
+                // }
 
                 let ifft = match &audio.ifft {
                     Some(ifft) => ifft.clone(),
@@ -226,8 +226,7 @@ pub fn playback(
                     }
                 };
                 let samples =
-                    lib::state::fft::ifft_samples(ifft.as_ref(), spec.0)
-                        .skip(cfg.fft.frame_len - hop_len)
+                    lib::state::fft::istft_samples(ifft.as_ref(), state.fft.raw.0.clone(), cfg.fft.hop_len)
                         .take(hop_len)
                         .collect::<Vec<_>>();
                 let buffer = SamplesBuffer::new(
