@@ -25,13 +25,14 @@ impl AppState {
             eframe::get_value::<PersistentAppState>(cc.storage.unwrap(), eframe::APP_KEY)
                 .unwrap_or_default();
         let (sample_tx, sample_rx) = channel();
+        let (audio_tx, audio_rx) = channel();
         let cfg = fs::read_to_string("config.toml")
             .ok()
             .and_then(|s| toml::from_str::<AnalysisConfig>(&s).ok())
             .unwrap_or_default();
         Self {
-            playback: audio::Playback::new(&mut persistent.audio, sample_tx),
-            spectrogram: spectrogram::Spectrogram::new(&cc.egui_ctx, &cfg, sample_rx),
+            playback: audio::Playback::new(&mut persistent.audio, sample_tx, audio_rx),
+            spectrogram: spectrogram::Spectrogram::new(&cc.egui_ctx, &cfg, sample_rx, audio_tx),
             persistent,
             cfg,
         }
@@ -46,20 +47,20 @@ impl eframe::App for AppState {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         let panel = egui::CentralPanel::default().frame(Frame::none().inner_margin(0.0));
         panel.show(ctx, |ui| {
-            self.spectrogram
-                .ui(ui, &self.cfg, &self.persistent.spec_cfg);
+            self.spectrogram.ui(
+                ui,
+                &self.cfg,
+                &self.persistent.spec_cfg,
+                &mut self.persistent.audio,
+                &self.playback,
+            );
         });
 
         egui::SidePanel::left("Configuration").show(ctx, |ui| {
             audio::ui(ui, &mut self.persistent.audio, &mut self.playback);
-            audio::playback(
-                &self.cfg,
-                &mut self.persistent.audio,
-                &mut self.playback,
-                &self.spectrogram.state,
-            );
+            audio::playback(&self.cfg, &mut self.persistent.audio, &mut self.playback);
             ui.separator();
-            self.persistent.spec_cfg.ui(ui, &mut self.cfg);
+            self.persistent.spec_cfg.ui(ui, &mut self.cfg, &mut self.persistent.audio);
             ui.separator();
             let export = ui.button("Export config to `config.toml`");
             if export.clicked() {

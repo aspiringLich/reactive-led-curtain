@@ -1,8 +1,10 @@
-use std::{collections::VecDeque, iter::repeat, sync::mpsc::Receiver};
-
-use egui::{
-    Color32, ColorImage, Context, Image, Slider, TextureHandle, TextureOptions, Ui,
+use std::{
+    collections::VecDeque,
+    iter::repeat,
+    sync::mpsc::{Receiver, Sender},
 };
+
+use egui::{Color32, ColorImage, Context, Image, Slider, TextureHandle, TextureOptions, Ui};
 
 use lib::{
     cfg::AnalysisConfig,
@@ -12,7 +14,7 @@ use lib::{
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumIter};
 
-use crate::{cmap, util};
+use crate::{audio, cmap, util};
 
 #[derive(Serialize, Deserialize)]
 #[serde(default)]
@@ -35,8 +37,8 @@ pub enum SpecData {
     HarmonicallyEnhanced,
     PercussivelyEnhanced,
     Harmonic,
-    Percussive,
     Residual,
+    Percussive,
 }
 
 impl Default for SpecConfig {
@@ -51,7 +53,7 @@ impl Default for SpecConfig {
 }
 
 impl SpecConfig {
-    pub fn ui(&mut self, ui: &mut Ui, cfg: &mut AnalysisConfig) {
+    pub fn ui(&mut self, ui: &mut Ui, cfg: &mut AnalysisConfig, audio: &mut audio::Audio) {
         ui.heading("Spectrogram");
         egui::Grid::new("spec_grid")
             .num_columns(2)
@@ -82,8 +84,16 @@ impl SpecConfig {
                 ui.end_row();
 
                 ui.label("Input");
-                util::enum_combobox(ui, "spec_data", "", &mut self.data);
+                let res = util::enum_combobox(ui, "spec_data", "", &mut self.data);
                 ui.end_row();
+                
+                if audio.hps && let Some(v) = res.inner {
+                    if v.iter().any(|v| v.changed()) {
+                        audio.harmonic = v[3].changed();
+                        audio.residual = v[4].changed();
+                        audio.percussive = v[5].changed();
+                    }
+                }
 
                 ui.label("β");
                 ui.add(Slider::new(&mut cfg.hps.separation_factor, 1.0..=10.0));
@@ -220,12 +230,18 @@ impl SpectrogramImageSet {
 pub struct Spectrogram {
     spec: SpectrogramImageSet,
     sample_rx: Receiver<Vec<i16>>,
+    audio_tx: Sender<Vec<i16>>,
     pub state: AnalysisState,
     pub buffer: VecDeque<i16>,
 }
 
 impl Spectrogram {
-    pub fn new(ctx: &Context, cfg: &AnalysisConfig, sample_rx: Receiver<Vec<i16>>) -> Self {
+    pub fn new(
+        ctx: &Context,
+        cfg: &AnalysisConfig,
+        sample_rx: Receiver<Vec<i16>>,
+        audio_tx: Sender<Vec<i16>>,
+    ) -> Self {
         // let img = ColorImage::new([IMG_WIDTH, IDX_MAX], Color32::BLACK);
         // let img_log = ColorImage::new([IMG_WIDTH, IDX_MAX], Color32::BLACK);
         Self {
@@ -235,18 +251,29 @@ impl Spectrogram {
             // img_log,
             spec: SpectrogramImageSet::new(ctx, "spectrogram"),
             sample_rx,
+            audio_tx,
             state: AnalysisState::blank(cfg),
             buffer: VecDeque::from_iter(repeat(0).take(cfg.fft.frame_len)),
         }
     }
 
-    pub fn ui(&mut self, ui: &mut Ui, cfg: &AnalysisConfig, scfg: &SpecConfig) {
+    pub fn ui(
+        &mut self,
+        ui: &mut Ui,
+        cfg: &AnalysisConfig,
+        scfg: &SpecConfig,
+        audio: &mut audio::Audio,
+        playback: &audio::Playback,
+    ) {
         while let Ok(samples) = self.sample_rx.try_recv() {
             let hop_len = cfg.fft.hop_len;
             assert_eq!(samples.len(), hop_len);
 
             self.buffer.drain(0..hop_len);
             self.buffer.extend(&samples);
+            self.audio_tx
+                .send(playback.audio_samples(audio, samples, cfg, &self.state))
+                .unwrap();
 
             take_mut::take_or_recover(
                 &mut self.state,
@@ -259,8 +286,8 @@ impl Spectrogram {
                 SpecData::HarmonicallyEnhanced => &self.state.hps.h_enhanced.into_db(),
                 SpecData::PercussivelyEnhanced => &self.state.hps.p_enhanced.into_db(),
                 SpecData::Harmonic => &self.state.hps.harmonic.into_db(),
-                SpecData::Percussive => &self.state.hps.percussive.into_db(),
                 SpecData::Residual => &self.state.hps.residual.into_db(),
+                SpecData::Percussive => &self.state.hps.percussive.into_db(),
             };
 
             self.spec.update_from_db(data, scfg);

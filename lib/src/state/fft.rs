@@ -103,6 +103,9 @@ pub fn istft_samples(
             }
             sum / w_sum
         })
+        .map(|f| f * 8.0) // there is DEFINITELY something wrong with this 
+                               // algorithm but until i figure it out magic 
+                               // constant woo
         .map(|f| (f * i16::MAX as f32) as i16)
 }
 

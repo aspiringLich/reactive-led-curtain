@@ -3,7 +3,10 @@ use std::{
     fs::{self, File},
     io::{self, BufReader},
     path::{Path, PathBuf},
-    sync::{Arc, OnceLock, mpsc::Sender},
+    sync::{
+        Arc, OnceLock,
+        mpsc::{Receiver, Sender},
+    },
     time::Duration,
 };
 
@@ -16,6 +19,7 @@ use lib::{
 use rodio::{
     Decoder, OutputStream, Sink, Source,
     buffer::SamplesBuffer,
+    play,
     source::{EmptyCallback, TrackPosition},
 };
 
@@ -39,29 +43,6 @@ pub struct Audio {
 impl Audio {
     pub fn filepath(&self) -> PathBuf {
         return PathBuf::from(format!("{}/{}", self.folder, self.file));
-    }
-}
-
-pub struct Playback {
-    decoder: Option<AudioDecoder>,
-    sink: Sink,
-    _stream: OutputStream, // DONT DROP
-    sample_tx: Sender<Vec<i16>>,
-}
-
-impl Playback {
-    pub fn new(audio: &mut Audio, sample_tx: Sender<Vec<i16>>) -> Self {
-        let stream = rodio::OutputStreamBuilder::open_default_stream().unwrap();
-        let decoder = try_get_decoder(&audio.filepath(), audio.progress);
-        if decoder.is_none() {
-            audio.playing = false;
-        }
-        Self {
-            decoder,
-            sink: Sink::connect_new(&stream.mixer()),
-            _stream: stream,
-            sample_tx,
-        }
     }
 }
 
@@ -137,7 +118,7 @@ pub fn ui(ui: &mut Ui, audio: &mut Audio, playback: &mut Playback) {
                 decoder
                     .try_seek(Duration::from_secs_f32(audio.progress))
                     .unwrap();
-                playback.sink.clear();
+                playback.dummy_sink.clear();
             }
 
             let time = |s: f32| format!("{}:{:02}", s as u32 / 60, s as u32 % 60);
@@ -163,22 +144,86 @@ pub fn ui(ui: &mut Ui, audio: &mut Audio, playback: &mut Playback) {
             audio.hps,
             Checkbox::new(&mut audio.percussive, "Percussive"),
         );
-        if [hps, h, r, p].iter().any(|r| r.clicked()) {
+        if [hps, h, r, p].iter().any(|r| r.changed()) {
             playback
                 .decoder
                 .as_mut()
                 .map(|d| d.try_seek(Duration::from_secs_f32(audio.progress)).unwrap());
-            playback.sink.clear();
+            playback.dummy_sink.clear();
         }
     });
 }
 
-pub fn playback(
-    cfg: &AnalysisConfig,
-    audio: &mut Audio,
-    playback: &mut Playback,
-    state: &AnalysisState,
-) {
+pub struct Playback {
+    decoder: Option<AudioDecoder>,
+    dummy_sink: Sink,
+    audio_sink: Sink,
+    _stream: OutputStream, // DONT DROP
+    sample_tx: Sender<Vec<i16>>,
+    audio_rx: Receiver<Vec<i16>>,
+}
+
+impl Playback {
+    pub fn new(
+        audio: &mut Audio,
+        sample_tx: Sender<Vec<i16>>,
+        audio_rx: Receiver<Vec<i16>>,
+    ) -> Self {
+        let stream = rodio::OutputStreamBuilder::open_default_stream().unwrap();
+        let decoder = try_get_decoder(&audio.filepath(), audio.progress);
+        if decoder.is_none() {
+            audio.playing = false;
+        }
+
+        let dummy_sink = Sink::connect_new(&stream.mixer());
+        dummy_sink.set_volume(0.0);
+        let audio_sink = Sink::connect_new(&stream.mixer());
+
+        Self {
+            decoder,
+            dummy_sink,
+            audio_sink,
+            _stream: stream,
+            sample_tx,
+            audio_rx,
+        }
+    }
+
+    /// Call this when samples are received by `spectrogram` to modify the
+    /// samples to be played if necessary
+    pub fn audio_samples(
+        &self,
+        audio: &mut Audio,
+        samples: Vec<i16>,
+        cfg: &AnalysisConfig,
+        state: &AnalysisState,
+    ) -> Vec<i16> {
+        if audio.hps {
+            let mut spec = RawSpec::<Complex<f32>>::blank_default(cfg);
+            for (i, val) in spec.audible_slice_mut(cfg).iter_mut().enumerate() {
+                *val += state.hps.harmonic[i] * audio.harmonic as u32 as f32;
+                *val += state.hps.residual[i] * audio.residual as u32 as f32;
+                *val += state.hps.percussive[i] * audio.percussive as u32 as f32;
+            }
+
+            let ifft = match &audio.ifft {
+                Some(ifft) => ifft.clone(),
+                None => {
+                    let ifft = FftPlanner::new().plan_fft_inverse(cfg.fft.frame_len);
+                    audio.ifft = Some(ifft.clone());
+                    ifft
+                }
+            };
+
+            lib::state::fft::istft_samples(ifft.as_ref(), spec.0, cfg.fft.hop_len)
+                .collect::<Vec<_>>()
+        } else {
+            samples
+        }
+    }
+}
+
+pub fn playback(cfg: &AnalysisConfig, audio: &mut Audio, playback: &mut Playback) {
     // *sigh* okay this is very jank but the vec cannot be sent between threads
     // because the callback in `EmptyCallback` has to satisfy `Fn`
     static SAMPLE_QUEUE: OnceLock<Mutex<VecDeque<Vec<i16>>>> = OnceLock::new();
@@ -186,58 +231,29 @@ pub fn playback(
 
     // we may clear the playback sink in audio::ui
     // not robust to other modifications but its fiiiiine
-    if playback.sink.len() == 0
+    if playback.dummy_sink.len() == 0
         && let Some(q) = SAMPLE_QUEUE.get()
     {
         q.lock().clear();
     }
 
-    if audio.playing {
-        let Some(decoder) = playback.decoder.as_mut() else {
-            playback.decoder = None;
-            return;
-        };
+    let Some(decoder) = playback.decoder.as_mut() else {
+        playback.decoder = None;
+        return;
+    };
 
+    if audio.playing {
         let hop_len = cfg.fft.hop_len;
         let target_samples = decoder.sample_rate() as usize / hop_len;
 
-        while playback.sink.len() < target_samples * 2 {
+        while playback.dummy_sink.len() < target_samples * 2 {
             let samples = decoder.take(hop_len).collect::<Vec<_>>();
-            let buffer = SamplesBuffer::new(
-                decoder.channels(),
-                decoder.sample_rate(),
-                samples.as_slice(),
-            );
-
-            if audio.hps {
-                // let mut spec = RawSpec::<Complex<f32>>::blank_default(cfg);
-                // for (i, val) in spec.audible_slice_mut(cfg).iter_mut().enumerate() {
-                //     *val += state.hps.harmonic[i] * audio.harmonic as u32 as f32;
-                //     *val += state.hps.residual[i] * audio.residual as u32 as f32;
-                //     *val += state.hps.percussive[i] * audio.percussive as u32 as f32;
-                // }
-
-                let ifft = match &audio.ifft {
-                    Some(ifft) => ifft.clone(),
-                    None => {
-                        let ifft = FftPlanner::new().plan_fft_inverse(cfg.fft.frame_len);
-                        audio.ifft = Some(ifft.clone());
-                        ifft
-                    }
-                };
-                let samples =
-                    lib::state::fft::istft_samples(ifft.as_ref(), state.fft.raw.0.clone(), cfg.fft.hop_len)
-                        .take(hop_len)
-                        .collect::<Vec<_>>();
-                let buffer = SamplesBuffer::new(
-                    decoder.channels(),
-                    decoder.sample_rate(),
-                    samples.as_slice(),
-                );
-                playback.sink.append(buffer);
-            } else {
-                playback.sink.append(buffer);
-            }
+            let buffer =
+                SamplesBuffer::new(decoder.channels(), decoder.sample_rate(), vec![
+                    0.0;
+                    samples.len()
+                ]);
+            playback.dummy_sink.append(buffer);
 
             if samples.len() == hop_len {
                 SAMPLE_QUEUE
@@ -246,25 +262,33 @@ pub fn playback(
                     .push_back(samples);
                 SAMPLE_TX.get_or_init(|| playback.sample_tx.clone());
 
-                playback.sink.append(EmptyCallback::<f32>::new(Box::new(|| {
-                    // indubitably the best code to ever grace god's green earth
-                    SAMPLE_TX
-                        .get()
-                        .expect("SAMPLE_TX should be initialized")
-                        .send(
-                            SAMPLE_QUEUE
-                                .get()
-                                .expect("SAMPLE_QUEUE should be initialized")
-                                .lock()
-                                .pop_front()
-                                .expect("SAMPLE_QUEUE should never be empty"),
-                        )
-                        .unwrap();
-                })));
+                playback
+                    .dummy_sink
+                    .append(EmptyCallback::<f32>::new(Box::new(|| {
+                        // indubitably the best code to ever grace god's green earth
+                        SAMPLE_TX
+                            .get()
+                            .expect("SAMPLE_TX should be initialized")
+                            .send(
+                                SAMPLE_QUEUE
+                                    .get()
+                                    .expect("SAMPLE_QUEUE should be initialized")
+                                    .lock()
+                                    .pop_front()
+                                    .expect("SAMPLE_QUEUE should never be empty"),
+                            )
+                            .unwrap();
+                    })));
             }
         }
-        playback.sink.play();
+        playback.dummy_sink.play();
     } else {
-        playback.sink.pause();
+        playback.dummy_sink.pause();
+    }
+
+    // actually play audio here (xd)
+    while let Ok(a) = playback.audio_rx.try_recv() {
+        let buffer = SamplesBuffer::new(decoder.channels(), decoder.sample_rate(), a.as_slice());
+        playback.audio_sink.append(buffer);
     }
 }
