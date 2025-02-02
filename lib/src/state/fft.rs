@@ -9,6 +9,7 @@ use super::{AudibleSpec, RawSpec};
 #[derive(Clone)]
 pub struct FftData {
     pub raw: RawSpec<Complex<f32>>,
+    pub audible: AudibleSpec<Complex<f32>>,
     pub power: AudibleSpec<unit::Power>,
     pub db: AudibleSpec<unit::Db>,
     pub fft: Arc<dyn Fft<f32>>,
@@ -18,6 +19,7 @@ impl FftData {
     pub fn blank(cfg: &AnalysisConfig) -> Self {
         Self {
             raw: RawSpec::blank_default(cfg),
+            audible: AudibleSpec::blank_default(cfg),
             power: AudibleSpec::blank_default(cfg),
             db: AudibleSpec::blank_default(cfg),
             fft: FftPlanner::new().plan_fft_forward(cfg.fft.frame_len),
@@ -30,6 +32,11 @@ impl FftData {
         samples: impl ExactSizeIterator<Item = i16>,
     ) -> Self {
         let raw = RawSpec(fft_samples(fft.as_ref(), samples));
+        let audible = raw
+            .audible_slice(cfg)
+            .into_iter()
+            .cloned()
+            .collect();
         let db = raw
             .audible_slice(cfg)
             .into_iter()
@@ -43,6 +50,7 @@ impl FftData {
 
         Self {
             raw,
+            audible: AudibleSpec(audible),
             power: AudibleSpec(magnitude),
             db: AudibleSpec(db),
             fft,

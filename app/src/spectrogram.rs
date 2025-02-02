@@ -86,7 +86,7 @@ impl SpecConfig {
                 ui.end_row();
 
                 ui.label("β");
-                ui.add(Slider::new(&mut cfg.hps.separation_factor, 1.0..=2.0));
+                ui.add(Slider::new(&mut cfg.hps.separation_factor, 1.0..=10.0));
                 ui.end_row();
             });
         ui.label(format!(
@@ -258,9 +258,9 @@ impl Spectrogram {
                 SpecData::Normal => &self.state.fft.db,
                 SpecData::HarmonicallyEnhanced => &self.state.hps.h_enhanced.into_db(),
                 SpecData::PercussivelyEnhanced => &self.state.hps.p_enhanced.into_db(),
-                SpecData::Harmonic => &self.state.hps.harmonic,
-                SpecData::Percussive => &self.state.hps.percussive,
-                SpecData::Residual => &self.state.hps.residual,                
+                SpecData::Harmonic => &self.state.hps.harmonic.into_db(),
+                SpecData::Percussive => &self.state.hps.percussive.into_db(),
+                SpecData::Residual => &self.state.hps.residual.into_db(),
             };
 
             self.spec.update_from_db(data, scfg);
