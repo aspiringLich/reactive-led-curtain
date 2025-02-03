@@ -63,10 +63,10 @@ impl SpecConfig {
                 let min_sep = 10.0;
 
                 ui.label("Db min");
-                let min = ui.add(Slider::new(&mut self.db_min, -100.0..=0.0));
+                let min = ui.add(Slider::new(&mut self.db_min, -20.0..=50.0));
                 ui.end_row();
                 ui.label("Db max");
-                let max = ui.add(Slider::new(&mut self.db_max, -50.0..=100.0));
+                let max = ui.add(Slider::new(&mut self.db_max, -0.0..=100.0));
                 ui.end_row();
 
                 if min.changed() {

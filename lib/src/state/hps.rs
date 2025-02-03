@@ -16,9 +16,14 @@ pub struct HpsData {
 
 impl HpsData {
     pub fn blank(cfg: &AnalysisConfig) -> Self {
+        let a_len = cfg.max_aidx();
         Self {
-            past_magnitudes: AudibleSpec::blank_clone(
-                &median::Filter::new(cfg.hps.h_filter_span),
+            past_magnitudes: AudibleSpec::from_iter(
+                (0..a_len)
+                    .into_iter()
+                    .map(|i| i as f32 / a_len as f32)
+                    .map(|f| f + 0.5)
+                    .map(|f| median::Filter::new((f * cfg.hps.h_filter_span as f32) as usize)),
                 cfg,
             ),
             h_enhanced: AudibleSpec::blank_default(cfg),

@@ -75,6 +75,15 @@ impl<T: Clone> AudibleSpec<T> {
     }
 }
 
+impl<T> AudibleSpec<T> {
+    pub fn from_iter(iter: impl Iterator<Item = T>, cfg: &AnalysisConfig) -> Self {
+        let v = Vec::from_iter(iter);
+        debug_assert_eq!(v.len(), cfg.max_aidx());
+        Self(v)
+    }
+}
+
+
 impl<T: Into<Db> + Copy> AudibleSpec<T> {
     pub fn into_db(&self) -> AudibleSpec<Db> {
         AudibleSpec(self.iter().map(|a| (*a).into()).collect())

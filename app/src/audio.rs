@@ -12,7 +12,9 @@ use std::{
 
 use egui::{Button, Checkbox, ComboBox, Slider, TextEdit, Ui, mutex::Mutex};
 use lib::{
-    cfg::AnalysisConfig, state::{fft, AnalysisState, RawSpec}, Complex, Fft, FftPlanner
+    Complex, Fft, FftPlanner,
+    cfg::AnalysisConfig,
+    state::{AnalysisState, RawSpec, fft},
 };
 use rodio::{
     Decoder, OutputStream, Sink, Source,
@@ -64,6 +66,8 @@ fn read_dir(dir: &Path) -> io::Result<Vec<String>> {
 }
 
 pub fn ui(ui: &mut Ui, audio: &mut Audio, playback: &mut Playback) {
+    ui.style_mut().spacing.combo_height = f32::INFINITY;
+    
     ui.heading("Playback");
     ui.horizontal(|ui| {
         ui.label("Folder");
@@ -75,7 +79,6 @@ pub fn ui(ui: &mut Ui, audio: &mut Audio, playback: &mut Playback) {
     });
     let file_select = ComboBox::from_label("File")
         .selected_text(&audio.file)
-        .height(f32::INFINITY)
         .show_ui(ui, |ui| {
             if let Ok(files) = read_dir(&Path::new(&audio.folder)) {
                 files.into_iter().any(|file| {
@@ -175,7 +178,7 @@ impl Playback {
         let dummy_sink = Sink::connect_new(&stream.mixer());
         dummy_sink.set_volume(0.0);
         let audio_sink = Sink::connect_new(&stream.mixer());
-        
+
         let istft = fft::InverseStft::new(&cfg);
 
         Self {
@@ -205,9 +208,11 @@ impl Playback {
                 *val += state.hps.residual[i] * audio.residual as u32 as f32;
                 *val += state.hps.percussive[i] * audio.percussive as u32 as f32;
             }
-            
+
+            self.audio_sink.set_volume(3.0);
             self.istft.push(spec.0).collect()
         } else {
+            self.audio_sink.set_volume(1.0);
             samples
         }
     }
