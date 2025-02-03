@@ -43,6 +43,10 @@ impl AnalysisConfig {
     pub fn max_aidx(&self) -> usize {
         self.idx_to_aidx(self.max_idx())
     }
+    
+    pub fn hops(&self) -> usize {
+        self.fft.frame_len / self.fft.hop_len
+    }
 }
 
 #[derive(Deserialize, Serialize)]

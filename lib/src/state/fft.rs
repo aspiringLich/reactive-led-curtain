@@ -1,6 +1,6 @@
 use rustfft::{Fft, FftPlanner, num_complex::Complex};
 use serde::{Deserialize, Serialize};
-use std::{f32::consts::PI, sync::Arc};
+use std::{collections::VecDeque, f32::consts::PI, iter, sync::Arc};
 
 use crate::{cfg::AnalysisConfig, unit};
 
@@ -59,6 +59,7 @@ impl FftData {
 // }
 
 fn hann_window(i: usize, len: usize) -> f32 {
+    debug_assert!(i < len);
     0.5 * (1.0 - f32::cos(2.0 * PI * i as f32 / (len - 1) as f32))
 }
 
@@ -79,35 +80,85 @@ pub fn fft_samples(
     buffer
 }
 
-pub fn istft_samples(
-    fft: &dyn Fft<f32>,
-    mut frequencies: Vec<Complex<f32>>,
+pub struct InverseStft {
+    fft: Arc<dyn Fft<f32>>,
     hop_len: usize,
-) -> impl Iterator<Item = i16> {
-    assert_eq!(fft.len(), frequencies.len());
-
-    fft.process(&mut frequencies);
-
-    let hops = fft.len() / hop_len;
-    (0..hop_len)
-        .into_iter()
-        .rev()
-        .map(move |r| {
-            let mut sum = 0.0;
-            let mut w_sum = 0.0;
-            for n in 1..=hops {
-                let i = n * hop_len - r - 1;
-                let w = hann_window(i, fft.len());
-                sum += frequencies[i].re * w / fft.len() as f32;
-                w_sum += w * w;
-            }
-            sum / w_sum
-        })
-        // there is DEFINITELY something wrong with this implementation but 
-        // until i figure it out magic constant woo
-        .map(|f| f * 8.0) 
-        .map(|f| (f * i16::MAX as f32) as i16)
+    samples: VecDeque<Vec<f32>>,
+    // buffer: VecDeque<Complex<f32>>,
 }
+
+impl InverseStft {
+    pub fn new(cfg: &AnalysisConfig) -> Self {
+        Self {
+            fft: FftPlanner::new().plan_fft_inverse(cfg.fft.frame_len),
+            hop_len: cfg.fft.hop_len,
+            samples: VecDeque::from_iter(iter::repeat_n(vec![0.0; cfg.fft.frame_len], cfg.hops())),
+            // buffer: VecDeque::from_iter(iter::repeat_n(Complex::ZERO, cfg.fft.frame_len)),
+        }
+    }
+
+    /// Returns the samples for the frequencies given `hop_num - 1` frames ago
+    #[must_use]
+    pub fn push(
+        &mut self,
+        mut frequencies: Vec<Complex<f32>>,
+    ) -> impl ExactSizeIterator<Item = i16> {
+        assert_eq!(self.fft.len(), frequencies.len());
+
+        // self.buffer.drain(0..self.hop_len);
+        // self.buffer.extend(frequencies.into_iter());
+
+        // let mut buffer = self.buffer.iter().cloned().collect::<Vec<_>>();
+        self.fft.process(&mut frequencies);
+        self.samples.pop_front();
+        self.samples
+            .push_back(frequencies.into_iter().map(|c| c.re).collect());
+
+        let hops = self.fft.len() / self.hop_len;
+        (0..self.hop_len)
+            .into_iter()
+            .rev()
+            .map(move |r| {
+                let mut sum = 0.0;
+                let mut w_sum = 0.0;
+                for n in 0..hops {
+                    let i = (hops - n) * self.hop_len - r - 1;
+                    let w = hann_window(i, self.fft.len());
+                    sum += self.samples[n][i] * w * w;
+                    w_sum += w * w;
+                }
+                sum / w_sum / self.fft.len() as f32
+            })
+            .map(|f| (f * i16::MAX as f32) as i16)
+    }
+}
+
+// pub fn istft_samples(
+//     fft: &dyn Fft<f32>,
+//     mut frequencies: Vec<Complex<f32>>,
+//     hop_len: usize,
+// ) -> impl Iterator<Item = i16> {
+//     assert_eq!(fft.len(), frequencies.len());
+
+//     fft.process(&mut frequencies);
+
+//     let hops = fft.len() / hop_len;
+//     (0..hop_len)
+//         .into_iter()
+//         .rev()
+//         .map(move |r| {
+//             let mut sum = 0.0;
+//             let mut w_sum = 0.0;
+//             for n in 1..=hops {
+//                 let i = n * hop_len - r - 1;
+//                 let w = hann_window(i, fft.len());
+//                 sum += frequencies[i].re * w / fft.len() as f32;
+//                 w_sum += w * w;
+//             }
+//             sum / w_sum
+//         })
+//         .map(|f| (f * i16::MAX as f32) as i16)
+// }
 
 #[derive(Deserialize, Serialize)]
 #[serde(default)]

@@ -266,8 +266,8 @@ impl Spectrogram {
         ui: &mut Ui,
         cfg: &AnalysisConfig,
         scfg: &SpecConfig,
-        audio: &mut audio::Audio,
-        playback: &audio::Playback,
+        audio: &audio::Audio,
+        playback: &mut audio::Playback,
     ) {
         while let Ok(samples) = self.sample_rx.try_recv() {
             let hop_len = cfg.fft.hop_len;

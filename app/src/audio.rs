@@ -12,9 +12,7 @@ use std::{
 
 use egui::{Button, Checkbox, ComboBox, Slider, TextEdit, Ui, mutex::Mutex};
 use lib::{
-    Complex, Fft, FftPlanner,
-    cfg::AnalysisConfig,
-    state::{AnalysisState, RawSpec},
+    cfg::AnalysisConfig, state::{fft, AnalysisState, RawSpec}, Complex, Fft, FftPlanner
 };
 use rodio::{
     Decoder, OutputStream, Sink, Source,
@@ -35,8 +33,6 @@ pub struct Audio {
     pub harmonic: bool,
     pub percussive: bool,
     pub residual: bool,
-    #[serde(skip)]
-    pub ifft: Option<Arc<dyn Fft<f32>>>,
 }
 
 impl Audio {
@@ -160,6 +156,7 @@ pub struct Playback {
     _stream: OutputStream, // DONT DROP
     sample_tx: Sender<Vec<i16>>,
     audio_rx: Receiver<Vec<i16>>,
+    istft: fft::InverseStft,
 }
 
 impl Playback {
@@ -167,6 +164,7 @@ impl Playback {
         audio: &mut Audio,
         sample_tx: Sender<Vec<i16>>,
         audio_rx: Receiver<Vec<i16>>,
+        cfg: &AnalysisConfig,
     ) -> Self {
         let stream = rodio::OutputStreamBuilder::open_default_stream().unwrap();
         let decoder = try_get_decoder(&audio.filepath(), audio.progress);
@@ -177,6 +175,8 @@ impl Playback {
         let dummy_sink = Sink::connect_new(&stream.mixer());
         dummy_sink.set_volume(0.0);
         let audio_sink = Sink::connect_new(&stream.mixer());
+        
+        let istft = fft::InverseStft::new(&cfg);
 
         Self {
             decoder,
@@ -185,14 +185,15 @@ impl Playback {
             _stream: stream,
             sample_tx,
             audio_rx,
+            istft,
         }
     }
 
     /// Call this when samples are received by `spectrogram` to modify the
     /// samples to be played if necessary
     pub fn audio_samples(
-        &self,
-        audio: &mut Audio,
+        &mut self,
+        audio: &Audio,
         samples: Vec<i16>,
         cfg: &AnalysisConfig,
         state: &AnalysisState,
@@ -204,18 +205,8 @@ impl Playback {
                 *val += state.hps.residual[i] * audio.residual as u32 as f32;
                 *val += state.hps.percussive[i] * audio.percussive as u32 as f32;
             }
-
-            let ifft = match &audio.ifft {
-                Some(ifft) => ifft.clone(),
-                None => {
-                    let ifft = FftPlanner::new().plan_fft_inverse(cfg.fft.frame_len);
-                    audio.ifft = Some(ifft.clone());
-                    ifft
-                }
-            };
-
-            lib::state::fft::istft_samples(ifft.as_ref(), spec.0, cfg.fft.hop_len)
-                .collect::<Vec<_>>()
+            
+            self.istft.push(spec.0).collect()
         } else {
             samples
         }

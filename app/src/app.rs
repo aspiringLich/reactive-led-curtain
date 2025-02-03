@@ -31,7 +31,7 @@ impl AppState {
             .and_then(|s| toml::from_str::<AnalysisConfig>(&s).ok())
             .unwrap_or_default();
         Self {
-            playback: audio::Playback::new(&mut persistent.audio, sample_tx, audio_rx),
+            playback: audio::Playback::new(&mut persistent.audio, sample_tx, audio_rx, &cfg),
             spectrogram: spectrogram::Spectrogram::new(&cc.egui_ctx, &cfg, sample_rx, audio_tx),
             persistent,
             cfg,
@@ -52,7 +52,7 @@ impl eframe::App for AppState {
                 &self.cfg,
                 &self.persistent.spec_cfg,
                 &mut self.persistent.audio,
-                &self.playback,
+                &mut self.playback,
             );
         });
 
