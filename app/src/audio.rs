@@ -19,7 +19,6 @@ use lib::{
 use rodio::{
     Decoder, OutputStream, Sink, Source,
     buffer::SamplesBuffer,
-    play,
     source::{EmptyCallback, TrackPosition},
 };
 

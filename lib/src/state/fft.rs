@@ -91,10 +91,10 @@ pub fn istft_samples(
     let hops = fft.len() / hop_len;
     (0..hop_len)
         .into_iter()
+        .rev()
         .map(move |r| {
             let mut sum = 0.0;
             let mut w_sum = 0.0;
-            let r = hop_len - r - 1;
             for n in 1..=hops {
                 let i = n * hop_len - r - 1;
                 let w = hann_window(i, fft.len());
@@ -103,9 +103,9 @@ pub fn istft_samples(
             }
             sum / w_sum
         })
-        .map(|f| f * 8.0) // there is DEFINITELY something wrong with this 
-                               // algorithm but until i figure it out magic 
-                               // constant woo
+        // there is DEFINITELY something wrong with this implementation but 
+        // until i figure it out magic constant woo
+        .map(|f| f * 8.0) 
         .map(|f| (f * i16::MAX as f32) as i16)
 }
 

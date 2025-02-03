@@ -57,8 +57,8 @@ impl HpsData {
             let h = *self.h_enhanced[i];
             let p = *self.p_enhanced[i];
             let e = f32::EPSILON;
-            let mask_h = ((h + e) / (h + p + e + e)).powf(hps.separation_factor);
-            let mask_p = ((p + e) / (h + p + e + e)).powf(hps.separation_factor);
+            let mask_h = ((h + e) / (h + p + e + e)).powf(hps.h_factor);
+            let mask_p = ((p + e) / (h + p + e + e)).powf(hps.p_factor);
             let mask_r = 1.0 - mask_h - mask_p;
 
             self.harmonic[i] = c * mask_h;
@@ -90,7 +90,8 @@ impl HpsData {
 pub struct HpsConfig {
     pub p_filter_span: usize,
     pub h_filter_span: usize,
-    pub separation_factor: f32,
+    pub p_factor: f32,
+    pub h_factor: f32,
 }
 
 impl Default for HpsConfig {
@@ -103,7 +104,8 @@ impl Default for HpsConfig {
             //  = ((8000 / 44_100 * 4096) / 8000) * 500
             //  = 46.43990929705215 indices
             h_filter_span: 46,
-            separation_factor: 2.0,
+            p_factor: 2.0,
+            h_factor: 2.0,
         }
     }
 }

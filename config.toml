@@ -10,5 +10,6 @@ hop_len = 1024
 
 [hps]
 p_filter_span = 10
-h_filter_span = 20
-separation_factor = 2.0
+h_filter_span = 10
+p_factor = 4.0
+h_factor = 2.0

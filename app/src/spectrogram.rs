@@ -87,16 +87,20 @@ impl SpecConfig {
                 let res = util::enum_combobox(ui, "spec_data", "", &mut self.data);
                 ui.end_row();
                 
-                if audio.hps && let Some(v) = res.inner {
-                    if v.iter().any(|v| v.changed()) {
+                if let Some(v) = res.inner {
+                    if v[3..=5].iter().any(|v| v.changed()) {
                         audio.harmonic = v[3].changed();
                         audio.residual = v[4].changed();
                         audio.percussive = v[5].changed();
                     }
                 }
 
-                ui.label("β");
-                ui.add(Slider::new(&mut cfg.hps.separation_factor, 1.0..=10.0));
+                ui.label("βh");
+                ui.add(Slider::new(&mut cfg.hps.h_factor, 1.0..=10.0));
+                ui.end_row();
+                
+                ui.label("βp");
+                ui.add(Slider::new(&mut cfg.hps.p_factor, 1.0..=10.0));
                 ui.end_row();
             });
         ui.label(format!(
