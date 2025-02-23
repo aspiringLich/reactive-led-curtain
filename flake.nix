@@ -21,22 +21,14 @@
         };
       in
       {
-        devShells.default = pkgs.mkShell {
+        devShells.default = pkgs.mkShell rec {
           packages = with pkgs; [
             openssl
             pkg-config
             alsa-lib
             (rust-bin.selectLatestNightlyWith (toolchain: toolchain.default))
           ];
-          LD_LIBRARY_PATH = "$LD_LIBRARY_PATH:${
-            with pkgs;
-            lib.makeLibraryPath [
-              wayland
-              libxkbcommon
-              fontconfig
-              libGL
-            ]
-          }";
+          LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath packages;
         };
       }
     );

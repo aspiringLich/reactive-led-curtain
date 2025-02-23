@@ -6,7 +6,7 @@ use app::AppState;
 
 mod app;
 mod audio;
-mod cmap;
+mod light;
 mod spectrogram;
 mod util;
 

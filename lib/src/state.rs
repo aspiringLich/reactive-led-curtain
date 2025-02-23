@@ -1,4 +1,5 @@
 use derive_more::derive::{Deref, DerefMut};
+use rustfft::num_complex::Complex;
 
 use crate::{
     cfg::AnalysisConfig,
@@ -8,6 +9,7 @@ use crate::{
 
 pub mod fft;
 pub mod hps;
+pub mod light;
 
 pub struct AnalysisState {
     pub fft: fft::FftData,
@@ -83,6 +85,11 @@ impl<T> AudibleSpec<T> {
     }
 }
 
+impl AudibleSpec<Complex<f32>> {
+    pub fn energy(&self, cfg: &AnalysisConfig) -> f32 {
+        self.iter().map(|&a| a.norm()).sum::<f32>() / cfg.fft.frame_len as f32
+    }
+}
 
 impl<T: Into<Db> + Copy> AudibleSpec<T> {
     pub fn into_db(&self) -> AudibleSpec<Db> {

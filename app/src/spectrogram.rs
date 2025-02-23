@@ -4,7 +4,7 @@ use std::{
     sync::mpsc::{Receiver, Sender},
 };
 
-use egui::{Color32, ColorImage, Context, Image, Slider, TextureHandle, TextureOptions, Ui};
+use egui::{Context, Image, Slider, TextureHandle, Ui};
 
 use lib::{
     cfg::AnalysisConfig,
@@ -14,7 +14,10 @@ use lib::{
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumIter};
 
-use crate::{audio, cmap, util};
+use crate::{audio, util::{self, ShiftImage}};
+
+mod cmap;
+mod hps_energy;
 
 #[derive(Serialize, Deserialize)]
 #[serde(default)]
@@ -86,7 +89,7 @@ impl SpecConfig {
                 ui.label("Input");
                 let res = util::enum_combobox(ui, "spec_data", "", &mut self.data);
                 ui.end_row();
-                
+
                 if let Some(v) = res.inner {
                     if v[3..=5].iter().any(|v| v.changed()) {
                         audio.harmonic = v[3].changed();
@@ -98,7 +101,7 @@ impl SpecConfig {
                 ui.label("βh");
                 ui.add(Slider::new(&mut cfg.hps.h_factor, 1.0..=10.0));
                 ui.end_row();
-                
+
                 ui.label("βp");
                 ui.add(Slider::new(&mut cfg.hps.p_factor, 1.0..=10.0));
                 ui.end_row();
@@ -112,47 +115,22 @@ impl SpecConfig {
 }
 
 struct SpectrogramImage {
-    tex: TextureHandle,
-    img: ColorImage,
-    dirty: bool,
+    img: ShiftImage,
     scale: fn(f32) -> f32,
 }
 
 impl SpectrogramImage {
     fn new(ctx: &egui::Context, name: &str, size: [usize; 2], scale: fn(f32) -> f32) -> Self {
-        let img = ColorImage::new(size, Color32::BLACK);
         Self {
-            tex: ctx.load_texture(name, img.clone(), TextureOptions::LINEAR),
-            img,
-            dirty: false,
+            img: ShiftImage::new(ctx, name, size),
             scale,
         }
     }
 
-    fn size(&self) -> [usize; 2] {
-        self.img.size
-    }
-
-    fn shift_img(&mut self, mut f: impl FnMut(usize) -> Color32) {
-        // rotating left shifts stuff left; we are overwriting the last column anyway
-        //
-        // 0 1 2     1 2 |3
-        // 3 4 5  -> 4 5 |6
-        // 6 7 8     7 8 |0
-        self.img.pixels.rotate_left(1);
-
-        // now write data in the last column
-        let [w, h] = self.size();
-        for (i, p_idx) in (0..h).into_iter().map(|y| (h - y) * w - 1).enumerate() {
-            self.img.pixels[p_idx] = f(i);
-        }
-        self.dirty = true;
-    }
-
     fn update_from_db(&mut self, spec: &AudibleSpec<unit::Db>, cfg: &SpecConfig) {
-        let [_, h] = self.size();
+        let [_, h] = self.img.size();
         let scale = self.scale;
-        self.shift_img(|i| {
+        self.img.shift_img(|i| {
             let (len, h, i) = (spec.len() as f32, h as f32, i as f32);
 
             let idx_lo = (scale)(i / h) * len;
@@ -176,14 +154,6 @@ impl SpectrogramImage {
             };
             cmap::magma_cmap((db - cfg.db_min) / (cfg.db_max - cfg.db_min))
         });
-    }
-
-    fn tex(&mut self) -> TextureHandle {
-        if self.dirty {
-            self.tex.set(self.img.clone(), TextureOptions::LINEAR);
-            self.dirty = false;
-        }
-        self.tex.clone()
     }
 }
 
@@ -225,8 +195,8 @@ impl SpectrogramImageSet {
 
     fn tex(&mut self, scale: SpecScale) -> TextureHandle {
         match scale {
-            SpecScale::Linear => self.linear.tex(),
-            SpecScale::Log => self.log.tex(),
+            SpecScale::Linear => self.linear.img.tex(),
+            SpecScale::Log => self.log.img.tex(),
         }
     }
 }
@@ -237,6 +207,7 @@ pub struct Spectrogram {
     audio_tx: Sender<Vec<i16>>,
     pub state: AnalysisState,
     pub buffer: VecDeque<i16>,
+    pub hps_energy: hps_energy::HpsEnergy,
 }
 
 impl Spectrogram {
@@ -258,11 +229,13 @@ impl Spectrogram {
             audio_tx,
             state: AnalysisState::blank(cfg),
             buffer: VecDeque::from_iter(repeat(0).take(cfg.fft.frame_len)),
+            hps_energy: hps_energy::HpsEnergy::new(200),
         }
     }
 
     pub fn ui(
         &mut self,
+        ctx: &Context,
         ui: &mut Ui,
         cfg: &AnalysisConfig,
         scfg: &SpecConfig,
@@ -295,6 +268,11 @@ impl Spectrogram {
             };
 
             self.spec.update_from_db(data, scfg);
+            self.hps_energy.update(
+                self.state.hps.harmonic.energy(cfg),
+                self.state.hps.residual.energy(cfg),
+                self.state.hps.percussive.energy(cfg),
+            );
         }
 
         ui.add(
@@ -302,5 +280,6 @@ impl Spectrogram {
                 .maintain_aspect_ratio(false)
                 .shrink_to_fit(),
         );
+        self.hps_energy.ui(ctx);
     }
 }

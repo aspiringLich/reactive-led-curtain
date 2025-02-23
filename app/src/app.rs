@@ -45,17 +45,6 @@ impl eframe::App for AppState {
     }
 
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        let panel = egui::CentralPanel::default().frame(Frame::none().inner_margin(0.0));
-        panel.show(ctx, |ui| {
-            self.spectrogram.ui(
-                ui,
-                &self.cfg,
-                &self.persistent.spec_cfg,
-                &mut self.persistent.audio,
-                &mut self.playback,
-            );
-        });
-
         egui::SidePanel::left("Configuration").show(ctx, |ui| {
             audio::ui(ui, &mut self.persistent.audio, &mut self.playback);
             audio::playback(&self.cfg, &mut self.persistent.audio, &mut self.playback);
@@ -66,6 +55,18 @@ impl eframe::App for AppState {
             if export.clicked() {
                 fs::write("config.toml", toml::to_string(&self.cfg).unwrap()).unwrap();
             }
+        });
+
+        let panel = egui::CentralPanel::default().frame(Frame::none().inner_margin(0.0));
+        panel.show(ctx, |ui| {
+            self.spectrogram.ui(
+                ctx,
+                ui,
+                &self.cfg,
+                &self.persistent.spec_cfg,
+                &mut self.persistent.audio,
+                &mut self.playback,
+            );
         });
 
         if self.persistent.audio.playing {

@@ -20,6 +20,12 @@ impl Into<Db> for Complex<f32> {
     }
 }
 
+impl Into<f32> for Db {
+    fn into(self) -> f32 {
+        10.0_f32.powf(*self / 10.0)
+    }
+}
+
 #[derive(Clone, Copy, Debug, Deref, Default, PartialEq, PartialOrd)]
 pub struct Power(pub f32);
 

@@ -2,6 +2,7 @@
 #![feature(anonymous_lifetime_in_impl_trait)]
 
 pub mod cfg;
+pub mod color;
 pub mod state;
 pub mod unit;
 pub mod util;

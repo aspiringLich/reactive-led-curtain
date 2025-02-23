@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::state::{hps, fft};
+use crate::state::{fft, hps};
 
 #[derive(Deserialize, Serialize, Default)]
 #[serde(default)]
@@ -28,22 +28,22 @@ impl AnalysisConfig {
     pub const fn max_idx(&self) -> usize {
         self.hz_to_idx(self.spectrogram.max_frequency)
     }
-    
+
     pub const fn idx_range(&self) -> usize {
         self.max_idx() - self.min_idx()
     }
-    
+
     /// Turns an index into the raw spectrogram into an index into the audible
     /// spectrogram range
     pub fn idx_to_aidx(&self, i: usize) -> usize {
         assert!(i <= self.max_idx());
         i - self.min_idx()
     }
-    
+
     pub fn max_aidx(&self) -> usize {
         self.idx_to_aidx(self.max_idx())
     }
-    
+
     pub fn hops(&self) -> usize {
         self.fft.frame_len / self.fft.hop_len
     }

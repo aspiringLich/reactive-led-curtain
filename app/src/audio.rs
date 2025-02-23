@@ -4,7 +4,7 @@ use std::{
     io::{self, BufReader},
     path::{Path, PathBuf},
     sync::{
-        Arc, OnceLock,
+        OnceLock,
         mpsc::{Receiver, Sender},
     },
     time::Duration,
@@ -12,7 +12,7 @@ use std::{
 
 use egui::{Button, Checkbox, ComboBox, Slider, TextEdit, Ui, mutex::Mutex};
 use lib::{
-    Complex, Fft, FftPlanner,
+    Complex,
     cfg::AnalysisConfig,
     state::{AnalysisState, RawSpec, fft},
 };
@@ -67,7 +67,7 @@ fn read_dir(dir: &Path) -> io::Result<Vec<String>> {
 
 pub fn ui(ui: &mut Ui, audio: &mut Audio, playback: &mut Playback) {
     ui.style_mut().spacing.combo_height = f32::INFINITY;
-    
+
     ui.heading("Playback");
     ui.horizontal(|ui| {
         ui.label("Folder");
@@ -243,11 +243,11 @@ pub fn playback(cfg: &AnalysisConfig, audio: &mut Audio, playback: &mut Playback
 
         while playback.dummy_sink.len() < target_samples * 2 {
             let samples = decoder.take(hop_len).collect::<Vec<_>>();
-            let buffer =
-                SamplesBuffer::new(decoder.channels(), decoder.sample_rate(), vec![
-                    0.0;
-                    samples.len()
-                ]);
+            let buffer = SamplesBuffer::new(
+                decoder.channels(),
+                decoder.sample_rate(),
+                vec![0.0; samples.len()],
+            );
             playback.dummy_sink.append(buffer);
 
             if samples.len() == hop_len {
