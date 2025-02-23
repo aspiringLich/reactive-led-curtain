@@ -21,21 +21,23 @@
         };
       in
       {
-        devShells.default =
-          pkgs.mkShell {
-            packages = with pkgs; [
-              openssl
-              pkg-config
-              alsa-lib
-              (rust-bin.selectLatestNightlyWith (toolchain: toolchain.default))
-            ];
-            LD_LIBRARY_PATH = "$LD_LIBRARY_PATH:${ with pkgs; lib.makeLibraryPath [
-                wayland
-                libxkbcommon
-                fontconfig
-                libGL
-            ] }";
-          };
+        devShells.default = pkgs.mkShell {
+          packages = with pkgs; [
+            openssl
+            pkg-config
+            alsa-lib
+            (rust-bin.selectLatestNightlyWith (toolchain: toolchain.default))
+          ];
+          LD_LIBRARY_PATH = "$LD_LIBRARY_PATH:${
+            with pkgs;
+            lib.makeLibraryPath [
+              wayland
+              libxkbcommon
+              fontconfig
+              libGL
+            ]
+          }";
+        };
       }
     );
 }
