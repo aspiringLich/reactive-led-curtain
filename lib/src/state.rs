@@ -3,7 +3,7 @@ use rustfft::num_complex::Complex;
 
 use crate::{
     cfg::AnalysisConfig,
-    unit::Db,
+    unit::{Db, Power},
     util::{vec_clone, vec_default},
 };
 
@@ -90,6 +90,12 @@ impl<T> AudibleSpec<T> {
 impl AudibleSpec<Complex<f32>> {
     pub fn power(&self, cfg: &AnalysisConfig) -> f32 {
         self.iter().map(|&a| a.norm_sqr()).sum::<f32>() / cfg.fft.frame_len as f32
+    }
+}
+
+impl AudibleSpec<Power> {
+    pub fn power(&self, cfg: &AnalysisConfig) -> f32 {
+        self.iter().map(|&a| *a).sum::<f32>() / cfg.fft.frame_len as f32
     }
 }
 

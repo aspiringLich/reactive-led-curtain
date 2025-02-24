@@ -9,3 +9,4 @@ rustfft = "6.2.0"
 serde = { workspace = true }
 garde = { workspace = true }
 median = { workspace = true }
+ecolor = "0.29"

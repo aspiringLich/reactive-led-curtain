@@ -41,3 +41,9 @@ impl Into<Db> for Power {
         Db(10.0 * f32::log10(f32::max(*self, amin)))
     }
 }
+
+impl Into<Power> for Complex<f32> {
+    fn into(self) -> Power {
+        Power(self.norm_sqr())
+    }
+}

@@ -1,6 +1,6 @@
 use egui::{Button, Color32, Slider, Vec2, Window};
-use egui_plot::Plot;
-use lib::state::AnalysisState;
+use egui_plot::{LineStyle, Plot};
+use lib::{color::Oklch, state::AnalysisState};
 
 use crate::util::{DataVec, uninteractable_plot};
 
@@ -26,6 +26,8 @@ pub struct Power {
     r_raw: DataVec<f32>,
     p_raw: DataVec<f32>,
     dp: DataVec<f32>,
+    p_filtered: DataVec<f32>,
+    dp_filtered: DataVec<f32>,
     len: usize,
 }
 
@@ -43,6 +45,8 @@ impl Power {
             r_raw: DataVec::new(len),
             p_raw: DataVec::new(len),
             dp: DataVec::new(len),
+            p_filtered: DataVec::new(len),
+            dp_filtered: DataVec::new(len),
             len,
         }
     }
@@ -73,22 +77,24 @@ impl Power {
                     .default_plot("hrp")
                     .include_y(state.scale)
                     .show(ui, |plot_ui| {
-                        plot_ui.line(self.p_raw.line().name("Percussive").color(Color32::YELLOW));
-                        plot_ui.line(self.r_raw.line().name("Residual").color(Color32::GREEN));
-                        plot_ui.line(self.h_raw.line().name("Harmonic").color(Color32::RED));
+                        plot_ui.line(self.p_raw.line().name("Percussive").color(Oklch::LIGHT.yellow()));
+                        plot_ui.line(self.r_raw.line().name("Residual").color(Oklch::LIGHT.green()));
+                        plot_ui.line(self.h_raw.line().name("Harmonic").color(Oklch::LIGHT.red()));
                     }),
                 Tab::Percussive => self
                     .default_plot("percussive")
                     .include_y(state.scale)
                     .include_y(-state.scale)
                     .show(ui, |plot_ui| {
+                        plot_ui.line(self.dp.line().name("Δp").color(Oklch::DIM.yellow()));
                         plot_ui.line(
                             self.p_raw
                                 .line()
-                                .name("Percussive Raw")
-                                .color(Color32::YELLOW),
+                                .name("Percussive")
+                                .color(Oklch::LIGHT.yellow()),
                         );
-                        plot_ui.line(self.dp.line().name("Δp").color(Color32::ORANGE));
+                        plot_ui.line(self.dp_filtered.line().name("Δfiltered").color(Oklch::DIM.red()));
+                        plot_ui.line(self.p_filtered.line().name("Filtered").color(Oklch::LIGHT.red()));
                     }),
             };
         });
@@ -100,6 +106,8 @@ impl Power {
         self.r_raw.push(p.r_power_raw);
         self.p_raw.push(p.p_power_raw);
         self.dp.push(p.dp);
+        self.p_filtered.push(p.p_filtered_power);
+        self.dp_filtered.push(p.dp_filtered);
     }
 
     fn default_plot<'a>(&self, id: impl std::hash::Hash) -> Plot<'a> {
