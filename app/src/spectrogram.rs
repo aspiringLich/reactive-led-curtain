@@ -17,7 +17,7 @@ use strum::{Display, EnumIter};
 use crate::{audio, util::{self, ShiftImage}};
 
 mod cmap;
-mod hps_energy;
+mod power;
 
 #[derive(Serialize, Deserialize)]
 #[serde(default)]
@@ -207,7 +207,7 @@ pub struct Spectrogram {
     audio_tx: Sender<Vec<i16>>,
     pub state: AnalysisState,
     pub buffer: VecDeque<i16>,
-    pub hps_energy: hps_energy::HpsEnergy,
+    pub hps_energy: power::HpsPower,
 }
 
 impl Spectrogram {
@@ -229,7 +229,7 @@ impl Spectrogram {
             audio_tx,
             state: AnalysisState::blank(cfg),
             buffer: VecDeque::from_iter(repeat(0).take(cfg.fft.frame_len)),
-            hps_energy: hps_energy::HpsEnergy::new(200),
+            hps_energy: power::HpsPower::new(200),
         }
     }
 
@@ -268,11 +268,7 @@ impl Spectrogram {
             };
 
             self.spec.update_from_db(data, scfg);
-            self.hps_energy.update(
-                self.state.hps.harmonic.energy(cfg),
-                self.state.hps.residual.energy(cfg),
-                self.state.hps.percussive.energy(cfg),
-            );
+            self.hps_energy.update(&self.state);
         }
 
         ui.add(

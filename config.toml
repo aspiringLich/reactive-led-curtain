@@ -2,7 +2,7 @@
 time_width = 512
 image_resolution = 512
 max_frequency = 8000.0
-min_frequency = 5.0
+min_frequency = 20.0
 
 [fft]
 frame_len = 4096

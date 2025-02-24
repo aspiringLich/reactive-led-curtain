@@ -1,6 +1,11 @@
-use egui::{Color32, ColorImage, ComboBox, InnerResponse, Response, TextureHandle, TextureOptions, Ui, WidgetText};
-use egui_plot::Plot;
+use egui::{
+    Color32, ColorImage, ComboBox, InnerResponse, Response, TextureHandle, TextureOptions, Ui,
+    WidgetText,
+};
+use egui_plot::{Line, Plot, PlotPoints};
 use strum::IntoEnumIterator;
+
+use std::collections::VecDeque;
 
 pub fn enum_combobox<T: IntoEnumIterator + ToString + PartialEq + Copy>(
     ui: &mut Ui,
@@ -63,5 +68,58 @@ impl ShiftImage {
 }
 
 pub fn uninteractable_plot<'a>(id: impl std::hash::Hash) -> Plot<'a> {
-    Plot::new(id).allow_drag(false).allow_zoom(false).allow_scroll(false).allow_boxed_zoom(false)
+    Plot::new(id)
+        .allow_drag(false)
+        .allow_zoom(false)
+        .allow_scroll(false)
+        .allow_boxed_zoom(false)
+}
+
+pub struct DataVec<T: Into<f64>> {
+    pub vec: VecDeque<T>,
+}
+
+impl<T: Into<f64>> std::ops::Deref for DataVec<T> {
+    type Target = VecDeque<T>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.vec
+    }
+}
+
+impl<T: Into<f64>> DataVec<T> {
+    pub fn new(size: usize) -> Self {
+        Self {
+            vec: VecDeque::with_capacity(size),
+        }
+    }
+
+    pub fn push(&mut self, val: T) {
+        if self.len() == self.capacity() {
+            self.vec.pop_front();
+        }
+        self.vec.push_back(val);
+    }
+
+    pub fn plot_points(&self) -> PlotPoints
+    where
+        T: ToOwned<Owned = T>,
+    {
+        self.iter()
+            .enumerate()
+            .map(|(i, v)| {
+                [
+                    (self.capacity() - self.len() + i) as f64,
+                    v.to_owned().into(),
+                ]
+            })
+            .collect()
+    }
+
+    pub fn line(&self) -> Line
+    where
+        T: ToOwned<Owned = T>,
+    {
+        Line::new(self.plot_points())
+    }
 }

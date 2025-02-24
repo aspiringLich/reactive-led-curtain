@@ -10,10 +10,12 @@ use crate::{
 pub mod fft;
 pub mod hps;
 pub mod light;
+pub mod power;
 
 pub struct AnalysisState {
     pub fft: fft::FftData,
     pub hps: hps::HpsData,
+    pub power: power::PowerData,
 }
 
 impl AnalysisState {
@@ -21,6 +23,7 @@ impl AnalysisState {
         Self {
             fft: fft::FftData::blank(cfg),
             hps: hps::HpsData::blank(cfg),
+            power: power::PowerData::blank(cfg),
         }
     }
 
@@ -30,10 +33,9 @@ impl AnalysisState {
         samples: impl ExactSizeIterator<Item = i16>,
     ) -> Self {
         let fft = fft::FftData::new(prev.fft.fft.clone(), cfg, samples);
-        Self {
-            hps: prev.hps.advance(cfg, &fft),
-            fft,
-        }
+        let hps = prev.hps.advance(cfg, &fft);
+        let power = power::PowerData::new(cfg, &hps, &prev.power);
+        Self { hps, fft, power }
     }
 }
 
@@ -86,8 +88,8 @@ impl<T> AudibleSpec<T> {
 }
 
 impl AudibleSpec<Complex<f32>> {
-    pub fn energy(&self, cfg: &AnalysisConfig) -> f32 {
-        self.iter().map(|&a| a.norm()).sum::<f32>() / cfg.fft.frame_len as f32
+    pub fn power(&self, cfg: &AnalysisConfig) -> f32 {
+        self.iter().map(|&a| a.norm_sqr()).sum::<f32>() / cfg.fft.frame_len as f32
     }
 }
 
