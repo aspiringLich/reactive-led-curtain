@@ -30,7 +30,7 @@ pub struct SpecConfig {
     db_max: f32,
     scale: SpecScale,
     data: SpecData,
-    power: power::PowerState,
+    pub power: power::PowerState,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Copy, EnumIter, Display)]
@@ -235,12 +235,12 @@ impl Spectrogram {
             audio_tx,
             state: AnalysisState::blank(cfg),
             buffer: VecDeque::from_iter(repeat(0).take(cfg.fft.frame_len)),
-            hps_energy: power::Power::new(200),
+            hps_energy: power::Power::new(512),
         }
     }
 }
 
-pub fn ui(ctx: &Context, ui: &mut Ui, state: &mut AppState) {
+pub fn ui(ui: &mut Ui, state: &mut AppState) {
     let spec = &mut state.spectrogram;
     while let Ok(samples) = spec.sample_rx.try_recv() {
         let hop_len = state.cfg.fft.hop_len;
@@ -281,6 +281,4 @@ pub fn ui(ctx: &Context, ui: &mut Ui, state: &mut AppState) {
             .maintain_aspect_ratio(false)
             .shrink_to_fit(),
     );
-    spec.hps_energy
-        .ui(&mut state.persistent.spec_cfg.power, ctx);
 }

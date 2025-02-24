@@ -59,9 +59,13 @@ impl eframe::App for AppState {
             }
         });
 
+        self.spectrogram
+            .hps_energy
+            .ui(&mut self.persistent.spec_cfg.power, ctx);
+
         let panel = egui::CentralPanel::default().frame(Frame::none().inner_margin(0.0));
         panel.show(ctx, |ui| {
-            spectrogram::ui(ctx, ui, self);
+            spectrogram::ui(ui, self);
         });
 
         if self.persistent.audio.playing {

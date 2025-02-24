@@ -34,7 +34,7 @@ impl AnalysisState {
     ) -> Self {
         let fft = fft::FftData::new(prev.fft.fft.clone(), cfg, samples);
         let hps = prev.hps.advance(cfg, &fft);
-        let power = power::PowerData::new(cfg, &hps, &prev.power);
+        let power = power::PowerData::new(cfg, &hps, prev.power);
         Self { hps, fft, power }
     }
 }

@@ -26,6 +26,10 @@
             openssl
             pkg-config
             alsa-lib
+            wayland
+            libxkbcommon
+            fontconfig
+            libGL
             (rust-bin.selectLatestNightlyWith (toolchain: toolchain.default))
           ];
           LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath packages;

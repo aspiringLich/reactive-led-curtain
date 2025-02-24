@@ -30,3 +30,29 @@ impl<T: Default> RingBuffer<T> {
         out
     }
 }
+
+#[derive(Clone)]
+pub struct RollingAverage {
+    sum: f32,
+    buf: RingBuffer<f32>,
+}
+
+impl RollingAverage {
+    pub fn new(len: usize) -> Self {
+        assert!(len > 0);
+        Self {
+            sum: 0.0,
+            buf: RingBuffer::from_default(len),
+        }
+    }
+
+    pub fn consume(&mut self, elem: f32) -> f32 {
+        let out = self.buf.replace(elem);
+        self.sum += elem - out;
+        self.average()
+    }
+
+    pub fn average(&self) -> f32 {
+        self.sum / self.buf.len() as f32
+    }
+}

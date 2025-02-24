@@ -75,45 +75,62 @@ pub fn uninteractable_plot<'a>(id: impl std::hash::Hash) -> Plot<'a> {
         .allow_boxed_zoom(false)
 }
 
-pub struct DataVec<T: Into<f64>> {
-    pub vec: VecDeque<T>,
+pub enum DataVec<'a, T, U> {
+    Owned(VecDeque<T>),
+    Derived {
+        vec: &'a VecDeque<U>,
+        func: Box<dyn Fn(&U) -> T + 'a>,
+    },
 }
 
-impl<T: Into<f64>> std::ops::Deref for DataVec<T> {
-    type Target = VecDeque<T>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.vec
-    }
-}
-
-impl<T: Into<f64>> DataVec<T> {
+impl<'a, T, U> DataVec<'a, T, U> {
     pub fn new(size: usize) -> Self {
-        Self {
-            vec: VecDeque::with_capacity(size),
-        }
+        Self::Owned(VecDeque::with_capacity(size))
     }
 
     pub fn push(&mut self, val: T) {
-        if self.len() == self.capacity() {
-            self.vec.pop_front();
+        match self {
+            Self::Owned(vec) => {
+                if vec.len() == vec.capacity() {
+                    vec.pop_front();
+                }
+                vec.push_back(val);
+            }
+            Self::Derived { .. } => panic!("Cannot push to a Derived DataVec"),
         }
-        self.vec.push_back(val);
     }
 
+    pub fn derive<F: Fn(&T) -> V + 'a, V: Into<f64>>(&'a self, func: F) -> DataVec<'a, f64, T> {
+        match self {
+            Self::Owned(vec) => DataVec::Derived {
+                vec,
+                func: Box::new(move |v| func(v).into()),
+            },
+            Self::Derived { .. } => panic!(
+                "Its probably possible to derive twice with some type fuckery im just too lazy"
+            ),
+        }
+    }
+}
+
+impl<'a, T: Into<f64>, U> DataVec<'a, T, U> {
     pub fn plot_points(&self) -> PlotPoints
     where
         T: ToOwned<Owned = T>,
     {
-        self.iter()
-            .enumerate()
-            .map(|(i, v)| {
-                [
-                    (self.capacity() - self.len() + i) as f64,
-                    v.to_owned().into(),
-                ]
-            })
-            .collect()
+        match self {
+            Self::Owned(vec) => vec
+                .iter()
+                .enumerate()
+                .map(|(i, v)| [(vec.capacity() - vec.len() + i) as f64, v.to_owned().into()])
+                .collect(),
+            Self::Derived { vec, func } => vec
+                .iter()
+                .map(|v| func(v))
+                .enumerate()
+                .map(|(i, v)| [(vec.capacity() - vec.len() + i) as f64, v.to_owned().into()])
+                .collect(),
+        }
     }
 
     pub fn line(&self) -> Line
