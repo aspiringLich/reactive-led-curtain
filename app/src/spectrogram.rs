@@ -14,7 +14,11 @@ use lib::{
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumIter};
 
-use crate::{audio, util::{self, ShiftImage}};
+use crate::{
+    app::AppState,
+    audio,
+    util::{self, ShiftImage},
+};
 
 mod cmap;
 mod power;
@@ -26,6 +30,7 @@ pub struct SpecConfig {
     db_max: f32,
     scale: SpecScale,
     data: SpecData,
+    power: power::PowerState,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Copy, EnumIter, Display)]
@@ -51,6 +56,7 @@ impl Default for SpecConfig {
             db_max: 50.0,
             scale: SpecScale::Linear,
             data: SpecData::Normal,
+            power: Default::default(),
         }
     }
 }
@@ -207,7 +213,7 @@ pub struct Spectrogram {
     audio_tx: Sender<Vec<i16>>,
     pub state: AnalysisState,
     pub buffer: VecDeque<i16>,
-    pub hps_energy: power::HpsPower,
+    pub hps_energy: power::Power,
 }
 
 impl Spectrogram {
@@ -229,53 +235,52 @@ impl Spectrogram {
             audio_tx,
             state: AnalysisState::blank(cfg),
             buffer: VecDeque::from_iter(repeat(0).take(cfg.fft.frame_len)),
-            hps_energy: power::HpsPower::new(200),
+            hps_energy: power::Power::new(200),
         }
     }
+}
 
-    pub fn ui(
-        &mut self,
-        ctx: &Context,
-        ui: &mut Ui,
-        cfg: &AnalysisConfig,
-        scfg: &SpecConfig,
-        audio: &audio::Audio,
-        playback: &mut audio::Playback,
-    ) {
-        while let Ok(samples) = self.sample_rx.try_recv() {
-            let hop_len = cfg.fft.hop_len;
-            assert_eq!(samples.len(), hop_len);
+pub fn ui(ctx: &Context, ui: &mut Ui, state: &mut AppState) {
+    let spec = &mut state.spectrogram;
+    while let Ok(samples) = spec.sample_rx.try_recv() {
+        let hop_len = state.cfg.fft.hop_len;
+        assert_eq!(samples.len(), hop_len);
 
-            self.buffer.drain(0..hop_len);
-            self.buffer.extend(&samples);
-            self.audio_tx
-                .send(playback.audio_samples(audio, samples, cfg, &self.state))
-                .unwrap();
+        spec.buffer.drain(0..hop_len);
+        spec.buffer.extend(&samples);
+        spec.audio_tx
+            .send(state.playback.audio_samples(
+                &state.persistent.audio,
+                samples,
+                &state.cfg,
+                &spec.state,
+            ))
+            .unwrap();
 
-            take_mut::take_or_recover(
-                &mut self.state,
-                || AnalysisState::blank(cfg),
-                |s| AnalysisState::from_prev(cfg, s, self.buffer.iter().cloned()),
-            );
-
-            let data = match scfg.data {
-                SpecData::Normal => &self.state.fft.db,
-                SpecData::HarmonicallyEnhanced => &self.state.hps.h_enhanced.into_db(),
-                SpecData::PercussivelyEnhanced => &self.state.hps.p_enhanced.into_db(),
-                SpecData::Harmonic => &self.state.hps.harmonic.into_db(),
-                SpecData::Residual => &self.state.hps.residual.into_db(),
-                SpecData::Percussive => &self.state.hps.percussive.into_db(),
-            };
-
-            self.spec.update_from_db(data, scfg);
-            self.hps_energy.update(&self.state);
-        }
-
-        ui.add(
-            Image::new(&self.spec.tex(scfg.scale))
-                .maintain_aspect_ratio(false)
-                .shrink_to_fit(),
+        take_mut::take_or_recover(
+            &mut spec.state,
+            || AnalysisState::blank(&state.cfg),
+            |s| AnalysisState::from_prev(&state.cfg, s, spec.buffer.iter().cloned()),
         );
-        self.hps_energy.ui(ctx);
+
+        let data = match state.persistent.spec_cfg.data {
+            SpecData::Normal => &spec.state.fft.db,
+            SpecData::HarmonicallyEnhanced => &spec.state.hps.h_enhanced.into_db(),
+            SpecData::PercussivelyEnhanced => &spec.state.hps.p_enhanced.into_db(),
+            SpecData::Harmonic => &spec.state.hps.harmonic.into_db(),
+            SpecData::Residual => &spec.state.hps.residual.into_db(),
+            SpecData::Percussive => &spec.state.hps.percussive.into_db(),
+        };
+
+        spec.spec.update_from_db(data, &state.persistent.spec_cfg);
+        spec.hps_energy.update(&spec.state);
     }
+
+    ui.add(
+        Image::new(&spec.spec.tex(state.persistent.spec_cfg.scale))
+            .maintain_aspect_ratio(false)
+            .shrink_to_fit(),
+    );
+    spec.hps_energy
+        .ui(&mut state.persistent.spec_cfg.power, ctx);
 }

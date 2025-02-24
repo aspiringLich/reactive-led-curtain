@@ -49,7 +49,9 @@ impl eframe::App for AppState {
             audio::ui(ui, &mut self.persistent.audio, &mut self.playback);
             audio::playback(&self.cfg, &mut self.persistent.audio, &mut self.playback);
             ui.separator();
-            self.persistent.spec_cfg.ui(ui, &mut self.cfg, &mut self.persistent.audio);
+            self.persistent
+                .spec_cfg
+                .ui(ui, &mut self.cfg, &mut self.persistent.audio);
             ui.separator();
             let export = ui.button("Export config to `config.toml`");
             if export.clicked() {
@@ -59,14 +61,7 @@ impl eframe::App for AppState {
 
         let panel = egui::CentralPanel::default().frame(Frame::none().inner_margin(0.0));
         panel.show(ctx, |ui| {
-            self.spectrogram.ui(
-                ctx,
-                ui,
-                &self.cfg,
-                &self.persistent.spec_cfg,
-                &mut self.persistent.audio,
-                &mut self.playback,
-            );
+            spectrogram::ui(ctx, ui, self);
         });
 
         if self.persistent.audio.playing {
