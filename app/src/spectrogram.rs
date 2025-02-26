@@ -47,6 +47,7 @@ pub enum SpecData {
     Harmonic,
     Residual,
     Percussive,
+    PercussiveFiltered,
 }
 
 impl Default for SpecConfig {
@@ -270,6 +271,7 @@ pub fn ui(ui: &mut Ui, state: &mut AppState) {
             SpecData::Harmonic => &spec.state.hps.harmonic.into_db(),
             SpecData::Residual => &spec.state.hps.residual.into_db(),
             SpecData::Percussive => &spec.state.hps.percussive.into_db(),
+            SpecData::PercussiveFiltered => &spec.state.power.p_filtered.into_db(),
         };
 
         spec.spec.update_from_db(data, &state.persistent.spec_cfg);

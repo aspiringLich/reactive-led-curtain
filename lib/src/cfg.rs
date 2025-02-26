@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::state::{fft, hps};
+use crate::state::{fft, hps, light};
 
 #[derive(Deserialize, Serialize, Default)]
 #[serde(default)]
@@ -8,6 +8,7 @@ pub struct AnalysisConfig {
     pub spectrogram: SpectrogramConfig,
     pub fft: fft::FftConfig,
     pub hps: hps::HpsConfig,
+    pub light: light::LightConfig,
 }
 
 impl AnalysisConfig {

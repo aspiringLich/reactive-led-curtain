@@ -1,9 +1,9 @@
 use std::{fs, sync::mpsc::channel};
 
-use egui::Frame;
+use egui::{Frame, Layout};
 use lib::cfg::AnalysisConfig;
 
-use crate::{audio, spectrogram};
+use crate::{audio, light, spectrogram};
 
 #[derive(serde::Deserialize, serde::Serialize, Default)]
 #[serde(default)]
@@ -17,6 +17,7 @@ pub struct AppState {
     pub cfg: AnalysisConfig,
     pub playback: audio::Playback,
     pub spectrogram: spectrogram::Spectrogram,
+    pub light: light::Light,
 }
 
 impl AppState {
@@ -33,6 +34,7 @@ impl AppState {
         Self {
             playback: audio::Playback::new(&mut persistent.audio, sample_tx, audio_rx, &cfg),
             spectrogram: spectrogram::Spectrogram::new(&cc.egui_ctx, &cfg, sample_rx, audio_tx),
+            light: light::Light::new(&cc.egui_ctx, &cfg.light),
             persistent,
             cfg,
         }
@@ -46,17 +48,22 @@ impl eframe::App for AppState {
 
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::SidePanel::left("Configuration").show(ctx, |ui| {
-            audio::ui(ui, &mut self.persistent.audio, &mut self.playback);
-            audio::playback(&self.cfg, &mut self.persistent.audio, &mut self.playback);
-            ui.separator();
-            self.persistent
-                .spec_cfg
-                .ui(ui, &mut self.cfg, &mut self.persistent.audio);
-            ui.separator();
-            let export = ui.button("Export config to `config.toml`");
-            if export.clicked() {
-                fs::write("config.toml", toml::to_string(&self.cfg).unwrap()).unwrap();
-            }
+            ui.with_layout(Layout::bottom_up(egui::Align::Min), |ui| {
+                self.light.ui(ctx, ui, &self.cfg.light);
+                ui.with_layout(Layout::default(), |ui| {
+                    audio::ui(ui, &mut self.persistent.audio, &mut self.playback);
+                    audio::playback(&self.cfg, &mut self.persistent.audio, &mut self.playback);
+                    ui.separator();
+                    self.persistent
+                        .spec_cfg
+                        .ui(ui, &mut self.cfg, &mut self.persistent.audio);
+                    ui.separator();
+                    let export = ui.button("Export config to `config.toml`");
+                    if export.clicked() {
+                        fs::write("config.toml", toml::to_string(&self.cfg).unwrap()).unwrap();
+                    }
+                })
+            });
         });
 
         self.spectrogram

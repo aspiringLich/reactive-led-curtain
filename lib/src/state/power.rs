@@ -40,7 +40,7 @@ impl PowerData {
         let p_power_raw = data.percussive.power(cfg);
         let dp = p_power_raw - prev.p_power_raw;
 
-        let mut filter = median::Filter::<Power>::new(8);
+        let mut filter = median::Filter::<Power>::new(40);
         let p_filtered = AudibleSpec(
             data.percussive
                 .iter()

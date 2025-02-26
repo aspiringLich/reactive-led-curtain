@@ -13,3 +13,7 @@ p_filter_span = 10
 h_filter_span = 20
 p_factor = 2.0
 h_factor = 2.0
+
+[light]
+width = 20
+height = 26
