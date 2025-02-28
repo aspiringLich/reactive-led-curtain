@@ -1,3 +1,5 @@
+use std::ops::Sub;
+
 use crate::{cfg::AnalysisConfig, unit::Power, util::RollingAverage};
 
 use super::{AudibleSpec, hps::HpsData};
@@ -12,6 +14,7 @@ pub struct PowerData {
     pub dp: f32,
     pub p_filtered: AudibleSpec<Power>,
     pub p_filtered_power: f32,
+    pub p_bass_power: f32,
     pub dp_filtered: f32,
 
     pub ratio_h_p: RollingAverage,
@@ -27,6 +30,7 @@ impl PowerData {
             dp: 0.0,
             p_filtered: AudibleSpec::blank_default(cfg),
             p_filtered_power: 0.0,
+            p_bass_power: 0.0,
             dp_filtered: 0.0,
             ratio_h_p: RollingAverage::new(5),
         }
@@ -51,6 +55,14 @@ impl PowerData {
                 .collect(),
         );
         let p_filtered_power = p_filtered.power(cfg);
+        let p_bass_power = AudibleSpec(
+            p_filtered.0[0..10]
+                .iter()
+                .enumerate()
+                .map(|(i, &x)| Power(*x * f32::min((10 - i) as f32 / 6.0, 1.0)))
+                .collect(),
+        )
+        .power(cfg);
         let dp_filtered = p_filtered_power - prev.p_filtered_power;
 
         let mut ratio_h_p = prev.ratio_h_p;
@@ -63,6 +75,7 @@ impl PowerData {
             p_power_raw,
             dp,
             p_filtered_power,
+            p_bass_power,
             p_filtered,
             dp_filtered,
             ratio_h_p,

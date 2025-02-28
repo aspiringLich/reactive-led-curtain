@@ -1,5 +1,5 @@
 use egui::{Align, Button, Frame, Layout, Slider, TopBottomPanel, Ui, Vec2, Window};
-use egui_plot::Plot;
+use egui_plot::{Legend, Plot};
 use lib::{
     color::Oklch,
     state::{AnalysisState, power::PowerData},
@@ -12,10 +12,12 @@ use crate::util::{DataVec, uninteractable_plot};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
+#[serde(default)]
 pub struct PowerState {
     tab: Tab,
     scale: f32,
     window: bool,
+    legend: bool,
 }
 
 impl Default for PowerState {
@@ -23,7 +25,8 @@ impl Default for PowerState {
         Self {
             tab: Tab::Hrp,
             scale: 300.0,
-            window: true,
+            window: false,
+            legend: true,
         }
     }
 }
@@ -84,10 +87,13 @@ impl Power {
             ui.horizontal(|ui| {
                 ui.label("Scale");
                 ui.add(Slider::new(&mut state.scale, 0.0..=600.0).trailing_fill(true));
+                ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                    ui.checkbox(&mut state.legend, "Legend");
+                })
             });
             match state.tab {
                 Tab::Hrp => self
-                    .default_plot("hrp")
+                    .default_plot("hrp", state.legend)
                     .include_y(state.scale)
                     .show(ui, |plot_ui| {
                         plot_ui.line(
@@ -113,7 +119,7 @@ impl Power {
                         );
                     }),
                 Tab::Percussive => self
-                    .default_plot("percussive")
+                    .default_plot("percussive", state.legend)
                     .include_y(state.scale)
                     .include_y(-state.scale)
                     .show(ui, |plot_ui| {
@@ -126,17 +132,24 @@ impl Power {
                         );
                         plot_ui.line(
                             self.data
-                                .derive(|d| d.p_power_raw)
-                                .line()
-                                .name("Percussive")
-                                .color(Oklch::LIGHT.yellow()),
-                        );
-                        plot_ui.line(
-                            self.data
                                 .derive(|d| d.dp_filtered)
                                 .line()
                                 .name("Δfiltered")
                                 .color(Oklch::DIM.red()),
+                        );
+                        plot_ui.line(
+                            self.data
+                                .derive(|d| d.p_bass_power)
+                                .line()
+                                .name("bass")
+                                .color(Oklch::LIGHT.green()),
+                        );
+                        plot_ui.line(
+                            self.data
+                                .derive(|d| d.p_power_raw)
+                                .line()
+                                .name("Percussive")
+                                .color(Oklch::LIGHT.yellow()),
                         );
                         plot_ui.line(
                             self.data
@@ -147,7 +160,7 @@ impl Power {
                         );
                     }),
                 Tab::Ratios => self
-                    .default_plot("ratios")
+                    .default_plot("ratios", state.legend)
                     .show(ui, |plot_ui| {
                         plot_ui.line(
                             self.data
@@ -155,13 +168,23 @@ impl Power {
                                 .line()
                                 .name("ratio(h, pf)")
                                 .color(Oklch::LIGHT.red()),
+                        );
+                        plot_ui.line(
+                            self.data
+                                .derive(|d| d.p_bass_power / d.p_filtered_power)
+                                .line()
+                                .name("bass")
+                                .color(Oklch::LIGHT.green()),
                         )
                     }),
             };
             window
         };
         if state.window {
-            state.window = Window::new("Power").show(ctx, ui).and_then(|r| r.inner).unwrap_or(true);
+            state.window = Window::new("Power")
+                .show(ctx, ui)
+                .and_then(|r| r.inner)
+                .unwrap_or(true);
         } else {
             let panel = TopBottomPanel::top("top")
                 .frame(Frame::default().inner_margin(Vec2::new(0.0, 5.0)))
@@ -174,14 +197,18 @@ impl Power {
         self.data.push(state.power.clone());
     }
 
-    fn default_plot<'a>(&self, id: impl std::hash::Hash) -> Plot<'a> {
-        uninteractable_plot(id)
-            .legend(Default::default())
+    fn default_plot<'a>(&self, id: impl std::hash::Hash, legend: bool) -> Plot<'a> {
+        let plot = uninteractable_plot(id)
             // .auto_bounds(Vec2b::FALSE)
             .include_x(0.0)
             .include_x(self.len as f32)
             .include_y(0.0)
             .include_y(1.0)
-            .set_margin_fraction(Vec2::new(0.0, 0.1))
+            .set_margin_fraction(Vec2::new(0.0, 0.1));
+        if legend {
+            plot.legend(Legend::default())
+        } else {
+            plot
+        }
     }
 }

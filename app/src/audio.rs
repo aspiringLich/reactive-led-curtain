@@ -31,6 +31,7 @@ pub struct Audio {
     file: String,
     pub playing: bool,
     progress: f32,
+    loop_audio: bool,
     pub hps: bool,
     pub harmonic: bool,
     pub percussive: bool,
@@ -133,6 +134,8 @@ pub fn ui(ui: &mut Ui, audio: &mut Audio, playback: &mut Playback) {
             ui.monospace("?:?? / ?:??");
         });
     }
+
+    ui.checkbox(&mut audio.loop_audio, "Loop");
 
     let hps = ui.checkbox(&mut audio.hps, "HPS");
     ui.indent("audio_hps", |ui| {
@@ -243,6 +246,18 @@ pub fn playback(cfg: &AnalysisConfig, audio: &mut Audio, playback: &mut Playback
 
         while playback.dummy_sink.len() < target_samples * 2 {
             let samples = decoder.take(hop_len).collect::<Vec<_>>();
+
+            // if there are no more samples left to read
+            if samples.len() == 0 {
+                if audio.loop_audio {
+                    decoder.try_seek(Duration::from_secs_f32(0.0)).unwrap();
+                    continue;
+                } else {
+                    audio.playing = false;
+                    break;
+                }
+            }
+
             let buffer = SamplesBuffer::new(
                 decoder.channels(),
                 decoder.sample_rate(),

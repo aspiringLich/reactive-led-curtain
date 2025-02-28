@@ -15,8 +15,8 @@ impl Light {
         }
     }
 
-    pub fn ui(&mut self, ctx: &Context, ui: &mut Ui, cfg: &LightConfig) {
-        // self.tex = ctx.load_texture("light", self.img.clone(), TextureOptions::NEAREST);
+    pub fn ui(&mut self, _ctx: &Context, ui: &mut Ui, _cfg: &LightConfig) {
+        self.tex.set(self.img.clone(), TextureOptions::NEAREST);
         ui.add(
             Image::new(&self.tex)
                 .maintain_aspect_ratio(true)

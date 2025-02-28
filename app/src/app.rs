@@ -1,6 +1,6 @@
 use std::{fs, sync::mpsc::channel};
 
-use egui::{Frame, Layout};
+use egui::{Frame, Layout, ScrollArea};
 use lib::cfg::AnalysisConfig;
 
 use crate::{audio, light, spectrogram};
@@ -51,18 +51,20 @@ impl eframe::App for AppState {
             ui.with_layout(Layout::bottom_up(egui::Align::Min), |ui| {
                 self.light.ui(ctx, ui, &self.cfg.light);
                 ui.with_layout(Layout::default(), |ui| {
-                    audio::ui(ui, &mut self.persistent.audio, &mut self.playback);
-                    audio::playback(&self.cfg, &mut self.persistent.audio, &mut self.playback);
-                    ui.separator();
-                    self.persistent
-                        .spec_cfg
-                        .ui(ui, &mut self.cfg, &mut self.persistent.audio);
-                    ui.separator();
-                    let export = ui.button("Export config to `config.toml`");
-                    if export.clicked() {
-                        fs::write("config.toml", toml::to_string(&self.cfg).unwrap()).unwrap();
-                    }
-                })
+                    ScrollArea::vertical().show(ui, |ui| {
+                        audio::ui(ui, &mut self.persistent.audio, &mut self.playback);
+                        audio::playback(&self.cfg, &mut self.persistent.audio, &mut self.playback);
+                        ui.separator();
+                        self.persistent
+                            .spec_cfg
+                            .ui(ui, &mut self.cfg, &mut self.persistent.audio);
+                        ui.separator();
+                        let export = ui.button("Export config to `config.toml`");
+                        if export.clicked() {
+                            fs::write("config.toml", toml::to_string(&self.cfg).unwrap()).unwrap();
+                        }
+                    });
+                });
             });
         });
 
