@@ -65,7 +65,7 @@ impl<T> RawSpec<T> {
 }
 
 /// The audible slice of the spectrogram's frequencies
-#[derive(Deref, DerefMut, Clone, Debug, Default)]
+#[derive(Deref, Clone, Debug, Default)]
 pub struct AudibleSpec<T>(Vec<T>);
 
 impl<T: Default> AudibleSpec<T> {
@@ -84,6 +84,18 @@ impl<T> AudibleSpec<T> {
         let v = Vec::from_iter(iter);
         debug_assert_eq!(v.len(), cfg.max_aidx());
         Self(v)
+    }
+
+    pub fn update(&mut self, mut f: impl FnMut(usize, &T) -> T)  {
+        for (i, t) in self.0.iter_mut().enumerate() {
+            *t = f(i, t);
+        }
+    }
+
+    pub fn mutate(&mut self, mut f: impl FnMut(usize, &mut T)) {
+        for (i, t) in self.0.iter_mut().enumerate() {
+            f(i, t);
+        }
     }
 }
 

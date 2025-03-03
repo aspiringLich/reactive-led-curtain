@@ -98,7 +98,7 @@ impl Power {
                     .show(ui, |plot_ui| {
                         plot_ui.line(
                             self.data
-                                .derive(|d| d.p_power_raw)
+                                .derive(|d| d.p_power_raw.val)
                                 .line()
                                 .name("Percussive")
                                 .color(Oklch::LIGHT.yellow()),
@@ -125,35 +125,35 @@ impl Power {
                     .show(ui, |plot_ui| {
                         plot_ui.line(
                             self.data
-                                .derive(|d| d.dp)
+                                .derive(|d| d.p_power_raw.dval)
                                 .line()
                                 .name("Δp")
                                 .color(Oklch::DIM.yellow()),
                         );
                         plot_ui.line(
                             self.data
-                                .derive(|d| d.dp_filtered)
+                                .derive(|d| d.p_filtered_power.dval)
                                 .line()
                                 .name("Δfiltered")
                                 .color(Oklch::DIM.red()),
                         );
                         plot_ui.line(
                             self.data
-                                .derive(|d| d.p_bass_power)
+                                .derive(|d| d.p_bass_power.val)
                                 .line()
                                 .name("bass")
                                 .color(Oklch::LIGHT.green()),
                         );
                         plot_ui.line(
                             self.data
-                                .derive(|d| d.p_power_raw)
+                                .derive(|d| d.p_power_raw.val)
                                 .line()
                                 .name("Percussive")
                                 .color(Oklch::LIGHT.yellow()),
                         );
                         plot_ui.line(
                             self.data
-                                .derive(|d| d.p_filtered_power)
+                                .derive(|d| d.p_filtered_power.val)
                                 .line()
                                 .name("Filtered")
                                 .color(Oklch::LIGHT.red()),
@@ -171,7 +171,7 @@ impl Power {
                         );
                         plot_ui.line(
                             self.data
-                                .derive(|d| d.p_bass_power / d.p_filtered_power)
+                                .derive(|d| d.p_bass_power.val / d.p_filtered_power.val)
                                 .line()
                                 .name("bass")
                                 .color(Oklch::LIGHT.green()),

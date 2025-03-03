@@ -37,9 +37,9 @@ impl HpsData {
     pub fn advance(mut self, cfg: &AnalysisConfig, fft: &FftData) -> Self {
         let hps = &cfg.hps;
 
-        for (i, filter) in self.past_magnitudes.iter_mut().enumerate() {
+        self.past_magnitudes.mutate(|i, filter| {
             filter.consume(fft.power[i]);
-        }
+        });
 
         self.h_enhanced = AudibleSpec(
             self.past_magnitudes
@@ -58,33 +58,31 @@ impl HpsData {
                 .collect(),
         );
 
-        for (i, &c) in fft.audible.iter().enumerate() {
-            let h = *self.h_enhanced[i];
-            let p = *self.p_enhanced[i];
-            let e = f32::EPSILON;
-            let mask_h = ((h + e) / (h + p + e + e)).powf(hps.h_factor);
-            let mask_p = ((p + e) / (h + p + e + e)).powf(hps.p_factor);
-            let mask_r = 1.0 - mask_h - mask_p;
-
-            self.harmonic[i] = c * mask_h;
-            self.percussive[i] = c * mask_p;
-            self.residual[i] = c * mask_r;
-
-            // let separation = *self.h_enhanced[i] / (*self.p_enhanced[i] + f32::EPSILON);
-            // if separation > hps.separation_factor {
-            //     self.harmonic[i] = *db;
-            //     self.percussive[i] = Db::default();
-            //     self.residual[i] = Db::default();
-            // } else if separation < 1.0 / hps.separation_factor {
-            //     self.harmonic[i] = Db::default();
-            //     self.percussive[i] = *db;
-            //     self.residual[i] = Db::default();
-            // } else {
-            //     self.harmonic[i] = Db::default();
-            //     self.percussive[i] = Db::default();
-            //     self.residual[i] = *db;
-            // }
+        struct Mask {
+            mask_h: f32,
+            mask_p: f32,
         }
+
+        let masks = fft
+            .audible
+            .iter()
+            .enumerate()
+            .map(|(i, _)| {
+                let h = *self.h_enhanced[i];
+                let p = *self.p_enhanced[i];
+                let e = f32::EPSILON;
+                let mask_h = ((h + e) / (h + p + e + e)).powf(hps.h_factor);
+                let mask_p = ((p + e) / (h + p + e + e)).powf(hps.p_factor);
+                Mask { mask_h, mask_p }
+            })
+            .collect::<Vec<_>>();
+
+        self.harmonic
+            .update(|i, _| fft.audible[i] * masks[i].mask_h);
+        self.percussive
+            .update(|i, _| fft.audible[i] * masks[i].mask_p);
+        self.residual
+            .update(|i, _| fft.audible[i] * (1.0 - masks[i].mask_h - masks[i].mask_p));
 
         self
     }
