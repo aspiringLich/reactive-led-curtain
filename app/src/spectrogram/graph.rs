@@ -2,7 +2,7 @@ use egui::{Align, Button, Frame, Layout, Slider, TopBottomPanel, Ui, Vec2, Windo
 use egui_plot::{Legend, Plot};
 use lib::{
     color::Oklch,
-    state::{AnalysisState, power::PowerData},
+    state::{AnalysisState, light::LightData, power::PowerData},
 };
 
 use std::convert::Infallible;
@@ -13,14 +13,14 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
 #[serde(default)]
-pub struct PowerState {
+pub struct GraphState {
     tab: Tab,
     scale: f32,
     window: bool,
     legend: bool,
 }
 
-impl Default for PowerState {
+impl Default for GraphState {
     fn default() -> Self {
         Self {
             tab: Tab::Hrp,
@@ -31,8 +31,9 @@ impl Default for PowerState {
     }
 }
 
-pub struct Power {
-    data: DataVec<'static, PowerData, Infallible>,
+pub struct Graph {
+    pdata: DataVec<'static, PowerData, Infallible>,
+    ldata: DataVec<'static, LightData, Infallible>,
     len: usize,
 }
 
@@ -42,17 +43,19 @@ enum Tab {
     Hrp,
     Percussive,
     Ratios,
+    Light,
 }
 
-impl Power {
+impl Graph {
     pub fn new(len: usize) -> Self {
         Self {
-            data: DataVec::new(len),
+            pdata: DataVec::new(len),
+            ldata: DataVec::new(len),
             len,
         }
     }
 
-    pub fn ui(&mut self, state: &mut PowerState, ctx: &egui::Context) {
+    pub fn ui(&mut self, state: &mut GraphState, ctx: &egui::Context) {
         let mut window = state.window;
         let ui = |ui: &mut Ui| {
             ui.horizontal(|ui| {
@@ -73,6 +76,12 @@ impl Power {
                     .clicked()
                 {
                     state.tab = Tab::Ratios;
+                }
+                if ui
+                    .add(Button::new("Light").selected(state.tab == Tab::Light))
+                    .clicked()
+                {
+                    state.tab = Tab::Light;
                 }
                 ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                     if ui
@@ -97,21 +106,21 @@ impl Power {
                     .include_y(state.scale)
                     .show(ui, |plot_ui| {
                         plot_ui.line(
-                            self.data
+                            self.pdata
                                 .derive(|d| d.p_power_raw.val)
                                 .line()
                                 .name("Percussive")
                                 .color(Oklch::LIGHT.yellow()),
                         );
                         plot_ui.line(
-                            self.data
+                            self.pdata
                                 .derive(|d| d.r_power_raw)
                                 .line()
                                 .name("Residual")
                                 .color(Oklch::LIGHT.green()),
                         );
                         plot_ui.line(
-                            self.data
+                            self.pdata
                                 .derive(|d| d.h_power_raw)
                                 .line()
                                 .name("Harmonic")
@@ -124,35 +133,35 @@ impl Power {
                     .include_y(-state.scale)
                     .show(ui, |plot_ui| {
                         plot_ui.line(
-                            self.data
+                            self.pdata
                                 .derive(|d| d.p_power_raw.dval)
                                 .line()
                                 .name("Δp")
                                 .color(Oklch::DIM.yellow()),
                         );
                         plot_ui.line(
-                            self.data
+                            self.pdata
                                 .derive(|d| d.p_filtered_power.dval)
                                 .line()
                                 .name("Δfiltered")
                                 .color(Oklch::DIM.red()),
                         );
                         plot_ui.line(
-                            self.data
+                            self.pdata
                                 .derive(|d| d.p_bass_power.val)
                                 .line()
                                 .name("bass")
                                 .color(Oklch::LIGHT.green()),
                         );
                         plot_ui.line(
-                            self.data
+                            self.pdata
                                 .derive(|d| d.p_power_raw.val)
                                 .line()
                                 .name("Percussive")
                                 .color(Oklch::LIGHT.yellow()),
                         );
                         plot_ui.line(
-                            self.data
+                            self.pdata
                                 .derive(|d| d.p_filtered_power.val)
                                 .line()
                                 .name("Filtered")
@@ -163,19 +172,37 @@ impl Power {
                     .default_plot("ratios", state.legend)
                     .show(ui, |plot_ui| {
                         plot_ui.line(
-                            self.data
+                            self.pdata
                                 .derive(|d| d.ratio_h_p.average())
                                 .line()
                                 .name("ratio(h, pf)")
                                 .color(Oklch::LIGHT.red()),
                         );
                         plot_ui.line(
-                            self.data
+                            self.pdata
                                 .derive(|d| d.p_bass_power.val / d.p_filtered_power.val)
                                 .line()
                                 .name("bass")
                                 .color(Oklch::LIGHT.green()),
                         )
+                    }),
+                Tab::Light => self
+                    .default_plot("graph", state.legend)
+                    .show(ui, |plot_ui| {
+                        plot_ui.line(
+                            self.ldata
+                                .derive(|d| d.percussive.average())
+                                .line()
+                                .name("Percussive")
+                                .color(Oklch::LIGHT.red()),
+                        );
+                        plot_ui.line(
+                            self.ldata
+                                .derive(|d| d.bass_percussive.average())
+                                .line()
+                                .name("Bass")
+                                .color(Oklch::LIGHT.green()),
+                        );
                     }),
             };
             window
@@ -194,7 +221,8 @@ impl Power {
     }
 
     pub fn update(&mut self, state: &AnalysisState) {
-        self.data.push(state.power.clone());
+        self.pdata.push(state.power.clone());
+        self.ldata.push(state.light.clone());
     }
 
     fn default_plot<'a>(&self, id: impl std::hash::Hash, legend: bool) -> Plot<'a> {

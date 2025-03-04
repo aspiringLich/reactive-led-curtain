@@ -16,6 +16,7 @@ pub struct AnalysisState {
     pub fft: fft::FftData,
     pub hps: hps::HpsData,
     pub power: power::PowerData,
+    pub light: light::LightData,
 }
 
 impl AnalysisState {
@@ -24,6 +25,7 @@ impl AnalysisState {
             fft: fft::FftData::blank(cfg),
             hps: hps::HpsData::blank(cfg),
             power: power::PowerData::blank(cfg),
+            light: light::LightData::blank(cfg),
         }
     }
 
@@ -35,7 +37,8 @@ impl AnalysisState {
         let fft = fft::FftData::new(prev.fft.fft.clone(), cfg, samples);
         let hps = prev.hps.advance(cfg, &fft);
         let power = power::PowerData::new(cfg, &hps, prev.power);
-        Self { hps, fft, power }
+        let light = prev.light.advance(cfg, &power);
+        Self { hps, fft, power, light }
     }
 }
 

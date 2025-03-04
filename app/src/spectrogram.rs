@@ -21,7 +21,7 @@ use crate::{
 };
 
 mod cmap;
-mod power;
+mod graph;
 
 #[derive(Serialize, Deserialize)]
 #[serde(default)]
@@ -30,7 +30,7 @@ pub struct SpecConfig {
     db_max: f32,
     scale: SpecScale,
     data: SpecData,
-    pub power: power::PowerState,
+    pub power: graph::GraphState,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Copy, EnumIter, Display)]
@@ -214,7 +214,7 @@ pub struct Spectrogram {
     audio_tx: Sender<Vec<i16>>,
     pub state: AnalysisState,
     pub buffer: VecDeque<i16>,
-    pub hps_energy: power::Power,
+    pub hps_energy: graph::Graph,
 }
 
 impl Spectrogram {
@@ -236,7 +236,7 @@ impl Spectrogram {
             audio_tx,
             state: AnalysisState::blank(cfg),
             buffer: VecDeque::from_iter(repeat(0).take(cfg.fft.frame_len)),
-            hps_energy: power::Power::new(512),
+            hps_energy: graph::Graph::new(512),
         }
     }
 }
