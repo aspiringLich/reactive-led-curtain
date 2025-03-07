@@ -65,6 +65,10 @@ impl ShiftImage {
         }
         self.tex.clone()
     }
+
+    pub fn img(&self) -> &ColorImage {
+        &self.img
+    }
 }
 
 pub fn uninteractable_plot<'a>(id: impl std::hash::Hash) -> Plot<'a> {

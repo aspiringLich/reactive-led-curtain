@@ -176,6 +176,7 @@ dependencies = [
  "lib",
  "log",
  "median",
+ "png",
  "rodio",
  "serde",
  "strum",

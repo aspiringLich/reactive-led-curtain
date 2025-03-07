@@ -14,3 +14,5 @@ target_wasm
 
 # direnv
 .direnv
+
+plot/*.png

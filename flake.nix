@@ -31,6 +31,11 @@
             fontconfig
             libGL
             (rust-bin.selectLatestNightlyWith (toolchain: toolchain.default))
+
+            (python3.withPackages (python-pkgs: with python-pkgs; [
+                matplotlib
+                toml
+            ]))
           ];
           LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath packages;
         };

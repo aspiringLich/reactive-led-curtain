@@ -1,10 +1,12 @@
 use std::{
     collections::VecDeque,
+    fs::File,
+    io::BufWriter,
     iter::repeat,
     sync::mpsc::{Receiver, Sender},
 };
 
-use egui::{Context, Image, Slider, TextureHandle, Ui};
+use egui::{ColorImage, Context, Image, Slider, TextureHandle, Ui};
 
 use lib::{
     cfg::AnalysisConfig,
@@ -63,7 +65,13 @@ impl Default for SpecConfig {
 }
 
 impl SpecConfig {
-    pub fn ui(&mut self, ui: &mut Ui, cfg: &mut AnalysisConfig, audio: &mut audio::Audio) {
+    pub fn ui(
+        &mut self,
+        ui: &mut Ui,
+        cfg: &mut AnalysisConfig,
+        audio: &mut audio::Audio,
+        spec: &Spectrogram,
+    ) {
         ui.heading("Spectrogram");
         egui::Grid::new("spec_grid")
             .num_columns(2)
@@ -118,7 +126,27 @@ impl SpecConfig {
             cfg.spectrogram.min_frequency, cfg.spectrogram.max_frequency
         ));
         ui.label(format!("Indeces: {}", cfg.max_idx() - cfg.min_idx()));
+
+        if ui.button("Save Spectrogram as .png").clicked() {
+            save_png("plot/spectrogram-linear.png",  spec.spec.linear.img.img());
+            save_png("plot/spectrogram-log.png",  spec.spec.log.img.img());
+            std::process::Command::new("python3")
+                .arg("plot/plot.py")
+                .spawn()
+                .expect("Failed to run python3 plot/plot.py");
+        }
     }
+}
+
+fn save_png(path: &str, img: &ColorImage) {
+    let file = File::create(path).unwrap();
+    let ref mut w = BufWriter::new(file);
+    let mut encoder = png::Encoder::new(w, img.width() as u32, img.height() as u32);
+    encoder.set_color(png::ColorType::Rgba);
+    encoder.set_depth(png::BitDepth::Eight);
+
+    let mut writer = encoder.write_header().unwrap();
+    writer.write_image_data(img.as_raw()).unwrap();
 }
 
 struct SpectrogramImage {
