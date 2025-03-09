@@ -55,9 +55,13 @@ impl eframe::App for AppState {
                         audio::ui(ui, &mut self.persistent.audio, &mut self.playback);
                         audio::playback(&self.cfg, &mut self.persistent.audio, &mut self.playback);
                         ui.separator();
-                        self.persistent
-                            .spec_cfg
-                            .ui(ui, &mut self.cfg, &mut self.persistent.audio, &self.spectrogram);
+                        self.persistent.spec_cfg.ui(
+                            ui,
+                            &mut self.cfg,
+                            &mut self.playback,
+                            &mut self.persistent.audio,
+                            &mut self.spectrogram,
+                        );
                         ui.separator();
                         let export = ui.button("Export config to `config.toml`");
                         if export.clicked() {

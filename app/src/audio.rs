@@ -156,8 +156,8 @@ pub fn ui(ui: &mut Ui, audio: &mut Audio, playback: &mut Playback) {
 }
 
 pub struct Playback {
-    decoder: Option<AudioDecoder>,
-    dummy_sink: Sink,
+    pub decoder: Option<AudioDecoder>,
+    pub dummy_sink: Sink,
     audio_sink: Sink,
     _stream: OutputStream, // DONT DROP
     sample_tx: Sender<Vec<i16>>,

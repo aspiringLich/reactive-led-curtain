@@ -69,6 +69,11 @@ impl ShiftImage {
     pub fn img(&self) -> &ColorImage {
         &self.img
     }
+
+    pub fn reset(&mut self) {
+        self.img.pixels.iter_mut().for_each(|p| *p = Color32::BLACK);
+        self.dirty = true;
+    }
 }
 
 pub fn uninteractable_plot<'a>(id: impl std::hash::Hash) -> Plot<'a> {

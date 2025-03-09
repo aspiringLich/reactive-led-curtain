@@ -1,9 +1,11 @@
 use std::{
+    borrow::Cow,
     collections::VecDeque,
     fs::File,
     io::BufWriter,
-    iter::repeat,
+    iter::{self, repeat},
     sync::mpsc::{Receiver, Sender},
+    time::Duration,
 };
 
 use egui::{ColorImage, Context, Image, Slider, TextureHandle, Ui};
@@ -13,6 +15,7 @@ use lib::{
     state::{AnalysisState, AudibleSpec},
     unit,
 };
+use rodio::Source;
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumIter};
 
@@ -69,8 +72,9 @@ impl SpecConfig {
         &mut self,
         ui: &mut Ui,
         cfg: &mut AnalysisConfig,
+        playback: &mut audio::Playback,
         audio: &mut audio::Audio,
-        spec: &Spectrogram,
+        spec: &mut Spectrogram,
     ) {
         ui.heading("Spectrogram");
         egui::Grid::new("spec_grid")
@@ -127,13 +131,38 @@ impl SpecConfig {
         ));
         ui.label(format!("Indeces: {}", cfg.max_idx() - cfg.min_idx()));
 
+        if ui.button("Regenerate Spectrogram").clicked()
+            && let Some(decoder) = &mut playback.decoder
+        {
+            spec.spec.reset();
+            let mut state = AnalysisState::blank(cfg);
+            let time = decoder.get_pos();
+            let hop_duration = Duration::from_secs_f32(cfg.fft.hop_len as f32 / 44_100.0);
+
+            decoder
+                .try_seek(
+                    time.checked_sub(
+                        hop_duration * (cfg.spectrogram.time_width) as u32,
+                    )
+                    .unwrap_or_default(),
+                )
+                .unwrap();
+
+            while decoder.get_pos() < time.checked_sub(Duration::from_secs_f32(0.001)).unwrap_or_default() {
+                let hop = decoder.take(cfg.fft.hop_len).collect::<Vec<_>>();
+                state = AnalysisState::from_prev(cfg, state, hop.into_iter());
+                spec.spec.update_from_db(&specdata(self.data, &state), self);
+            }
+            decoder.try_seek(time).unwrap();
+        }
         if ui.button("Save Spectrogram as .png").clicked() {
-            save_png("plot/spectrogram-linear.png",  spec.spec.linear.img.img());
-            save_png("plot/spectrogram-log.png",  spec.spec.log.img.img());
+            save_png("plot/spectrogram-linear.png", spec.spec.linear.img.img());
+            save_png("plot/spectrogram-log.png", spec.spec.log.img.img());
             std::process::Command::new("python3")
                 .arg("plot/plot.py")
                 .spawn()
                 .expect("Failed to run python3 plot/plot.py");
+            log::info!("Saved images at plot/spectrogram-*.png");
         }
     }
 }
@@ -150,7 +179,7 @@ fn save_png(path: &str, img: &ColorImage) {
 }
 
 struct SpectrogramImage {
-    img: ShiftImage,
+    pub img: ShiftImage,
     scale: fn(f32) -> f32,
 }
 
@@ -234,6 +263,11 @@ impl SpectrogramImageSet {
             SpecScale::Log => self.log.img.tex(),
         }
     }
+
+    pub fn reset(&mut self) {
+        self.linear.img.reset();
+        self.log.img.reset();
+    }
 }
 
 pub struct Spectrogram {
@@ -241,7 +275,6 @@ pub struct Spectrogram {
     sample_rx: Receiver<Vec<i16>>,
     audio_tx: Sender<Vec<i16>>,
     pub state: AnalysisState,
-    pub buffer: VecDeque<i16>,
     pub hps_energy: graph::Graph,
 }
 
@@ -263,7 +296,6 @@ impl Spectrogram {
             sample_rx,
             audio_tx,
             state: AnalysisState::blank(cfg),
-            buffer: VecDeque::from_iter(repeat(0).take(cfg.fft.frame_len)),
             hps_energy: graph::Graph::new(512),
         }
     }
@@ -275,12 +307,10 @@ pub fn ui(ui: &mut Ui, state: &mut AppState) {
         let hop_len = state.cfg.fft.hop_len;
         assert_eq!(samples.len(), hop_len);
 
-        spec.buffer.drain(0..hop_len);
-        spec.buffer.extend(&samples);
         spec.audio_tx
             .send(state.playback.audio_samples(
                 &state.persistent.audio,
-                samples,
+                samples.clone(),
                 &state.cfg,
                 &spec.state,
             ))
@@ -289,20 +319,13 @@ pub fn ui(ui: &mut Ui, state: &mut AppState) {
         take_mut::take_or_recover(
             &mut spec.state,
             || AnalysisState::blank(&state.cfg),
-            |s| AnalysisState::from_prev(&state.cfg, s, spec.buffer.iter().cloned()),
+            |s| AnalysisState::from_prev(&state.cfg, s, samples.iter().cloned()),
         );
 
-        let data = match state.persistent.spec_cfg.data {
-            SpecData::Normal => &spec.state.fft.db,
-            SpecData::HarmonicallyEnhanced => &spec.state.hps.h_enhanced.into_db(),
-            SpecData::PercussivelyEnhanced => &spec.state.hps.p_enhanced.into_db(),
-            SpecData::Harmonic => &spec.state.hps.harmonic.into_db(),
-            SpecData::Residual => &spec.state.hps.residual.into_db(),
-            SpecData::Percussive => &spec.state.hps.percussive.into_db(),
-            SpecData::PercussiveFiltered => &spec.state.power.p_filtered.into_db(),
-        };
-
-        spec.spec.update_from_db(data, &state.persistent.spec_cfg);
+        spec.spec.update_from_db(
+            &specdata(state.persistent.spec_cfg.data, &spec.state),
+            &state.persistent.spec_cfg,
+        );
         spec.hps_energy.update(&spec.state);
     }
 
@@ -311,4 +334,19 @@ pub fn ui(ui: &mut Ui, state: &mut AppState) {
             .maintain_aspect_ratio(false)
             .shrink_to_fit(),
     );
+}
+
+fn specdata<'a>(data: SpecData, state: &'a AnalysisState) -> Cow<'a, AudibleSpec<unit::Db>> {
+    fn o<'a>(x: AudibleSpec<unit::Db>) -> Cow<'a, AudibleSpec<unit::Db>> {
+        Cow::Owned(x)
+    }
+    match data {
+        SpecData::Normal => Cow::Borrowed(&state.fft.db),
+        SpecData::HarmonicallyEnhanced => o(state.hps.h_enhanced.into_db()),
+        SpecData::PercussivelyEnhanced => o(state.hps.p_enhanced.into_db()),
+        SpecData::Harmonic => o(state.hps.harmonic.into_db()),
+        SpecData::Residual => o(state.hps.residual.into_db()),
+        SpecData::Percussive => o(state.hps.percussive.into_db()),
+        SpecData::PercussiveFiltered => o(state.power.p_filtered.into_db()),
+    }
 }

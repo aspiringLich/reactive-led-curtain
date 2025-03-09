@@ -1,3 +1,5 @@
+use std::{collections::VecDeque, iter};
+
 use derive_more::derive::{Deref, DerefMut};
 use rustfft::num_complex::Complex;
 
@@ -17,6 +19,7 @@ pub struct AnalysisState {
     pub hps: hps::HpsData,
     pub power: power::PowerData,
     pub light: light::LightData,
+    pub buffer: VecDeque<i16>,
 }
 
 impl AnalysisState {
@@ -26,19 +29,29 @@ impl AnalysisState {
             hps: hps::HpsData::blank(cfg),
             power: power::PowerData::blank(cfg),
             light: light::LightData::blank(cfg),
+            buffer: VecDeque::from_iter(iter::repeat_n(0, cfg.fft.frame_len)),
         }
     }
 
     pub fn from_prev(
         cfg: &AnalysisConfig,
-        prev: AnalysisState,
-        samples: impl ExactSizeIterator<Item = i16>,
+        mut prev: AnalysisState,
+        hop_samples: impl ExactSizeIterator<Item = i16>,
     ) -> Self {
-        let fft = fft::FftData::new(prev.fft.fft.clone(), cfg, samples);
+        prev.buffer.drain(0..cfg.fft.hop_len);
+        prev.buffer.extend(hop_samples);
+
+        let fft = fft::FftData::new(prev.fft.fft.clone(), cfg, prev.buffer.iter().cloned());
         let hps = prev.hps.advance(cfg, &fft);
         let power = power::PowerData::new(cfg, &hps, prev.power);
         let light = prev.light.advance(cfg, &power);
-        Self { hps, fft, power, light }
+        Self {
+            hps,
+            fft,
+            power,
+            light,
+            buffer: prev.buffer,
+        }
     }
 }
 
@@ -89,7 +102,7 @@ impl<T> AudibleSpec<T> {
         Self(v)
     }
 
-    pub fn update(&mut self, mut f: impl FnMut(usize, &T) -> T)  {
+    pub fn update(&mut self, mut f: impl FnMut(usize, &T) -> T) {
         for (i, t) in self.0.iter_mut().enumerate() {
             *t = f(i, t);
         }
