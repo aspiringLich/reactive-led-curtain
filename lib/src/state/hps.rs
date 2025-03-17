@@ -73,6 +73,13 @@ impl HpsData {
                 let e = f32::EPSILON;
                 let mask_h = ((h + e) / (h + p + e + e)).powf(hps.h_factor);
                 let mask_p = ((p + e) / (h + p + e + e)).powf(hps.p_factor);
+                // if h / p > cfg.hps.h_factor {
+                //     return Mask { mask_h: 1.0, mask_p: 0.0 };
+                // } else if p / h > cfg.hps.p_factor {
+                //     return Mask { mask_h: 0.0, mask_p: 1.0 };
+                // } else {
+                //     return Mask { mask_h: 0.0, mask_p: 0.5 };
+                // }
                 Mask { mask_h, mask_p }
             })
             .collect::<Vec<_>>();

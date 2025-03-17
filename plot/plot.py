@@ -19,6 +19,9 @@ def plot(
     output_path: str,
     forward: Callable[[float], float],
     inverse: Callable[[float], float],
+    xlabel: bool = True,
+    ylabel: bool = True,
+    bar: bool = True,
 ):
     img = mpimg.imread(image_path)
 
@@ -27,13 +30,17 @@ def plot(
     # ax.set_yscale("function", functions=(forward, inverse))
     ax.set_ylim(ymin, ymax)
     ax.set_xlim(xmin, xmax)
-    ax.set_xlabel("Time (s)")
-    ax.set_ylabel("Frequency (Hz)")
+    if ylabel:
+        ax.set_ylabel("Frequency (Hz)")
+    if xlabel:
+        ax.set_xlabel("Time (s)")
     ax.yaxis.set_ticks([0, ymax])
 
     imshow = ax.imshow(img, cmap='magma', aspect='auto',  extent=(xmin, xmax, ymin, ymax), vmin=0, vmax=50)
-    bar = fig.colorbar(imshow)
-    bar.set_label("Magnitude (dB)")
+
+    if bar:
+        colorbar = fig.colorbar(imshow)
+        colorbar.set_label("Magnitude (dB)")
 
     fig.savefig(output_path)
 
@@ -50,3 +57,7 @@ def weird_log_inverse(y):
     B = 1024
     return (B ** (1 - y) - 1) / (B - 1)
 plot("spectrogram-log.png", "plot-log.png", weird_log, weird_log_inverse)
+
+plot("spectrogram-log.png", "plot-no-colorbar.png", weird_log, weird_log_inverse, bar=False)
+plot("spectrogram-log.png", "plot-no-colorbar-ylabel.png", weird_log, weird_log_inverse, ylabel=False, bar=False)
+plot("spectrogram-log.png", "plot-no-ylabel.png", weird_log, weird_log_inverse, ylabel=False)

@@ -10,3 +10,4 @@ serde = { workspace = true }
 garde = { workspace = true }
 median = { workspace = true }
 ecolor = "0.29"
+tiny-skia = { version = "0.11.4", default-features = false, features = ["simd", "std"] }

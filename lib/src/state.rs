@@ -12,24 +12,27 @@ use crate::{
 pub mod fft;
 pub mod hps;
 pub mod light;
+pub mod paint;
 pub mod power;
 
 pub struct AnalysisState {
+    pub buffer: VecDeque<i16>,
     pub fft: fft::FftData,
     pub hps: hps::HpsData,
     pub power: power::PowerData,
     pub light: light::LightData,
-    pub buffer: VecDeque<i16>,
+    pub paint: paint::PaintData,
 }
 
 impl AnalysisState {
     pub fn blank(cfg: &AnalysisConfig) -> Self {
         Self {
+            buffer: VecDeque::from_iter(iter::repeat_n(0, cfg.fft.frame_len)),
             fft: fft::FftData::blank(cfg),
             hps: hps::HpsData::blank(cfg),
             power: power::PowerData::blank(cfg),
             light: light::LightData::blank(cfg),
-            buffer: VecDeque::from_iter(iter::repeat_n(0, cfg.fft.frame_len)),
+            paint: paint::PaintData::blank(cfg),
         }
     }
 
@@ -44,13 +47,15 @@ impl AnalysisState {
         let fft = fft::FftData::new(prev.fft.fft.clone(), cfg, prev.buffer.iter().cloned());
         let hps = prev.hps.advance(cfg, &fft);
         let power = power::PowerData::new(cfg, &hps, prev.power);
+        let paint = prev.paint.advance(&prev.light);
         let light = prev.light.advance(cfg, &power);
         Self {
+            buffer: prev.buffer,
             hps,
             fft,
             power,
             light,
-            buffer: prev.buffer,
+            paint,
         }
     }
 }

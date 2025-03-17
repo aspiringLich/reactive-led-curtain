@@ -1,9 +1,9 @@
 use egui::{Color32, ColorImage, Context, Image, TextureHandle, TextureOptions, Ui};
-use lib::state::light::LightConfig;
+use lib::state::{light::LightConfig, paint::PaintData};
 
 pub struct Light {
     tex: TextureHandle,
-    img: ColorImage,
+    // img: ColorImage,
 }
 
 impl Light {
@@ -11,12 +11,21 @@ impl Light {
         let img = ColorImage::new([cfg.width as usize, cfg.height as usize], Color32::BLACK);
         Self {
             tex: ctx.load_texture("light", img.clone(), TextureOptions::NEAREST),
-            img,
+            // img,
         }
     }
 
-    pub fn ui(&mut self, _ctx: &Context, ui: &mut Ui, _cfg: &LightConfig) {
-        self.tex.set(self.img.clone(), TextureOptions::NEAREST);
+    pub fn ui(&mut self, _ctx: &Context, ui: &mut Ui, cfg: &LightConfig, paint: &PaintData) {
+        let img = ColorImage {
+            size: [cfg.width as usize, cfg.height as usize],
+            pixels: paint
+                .pix
+                .pixels()
+                .iter()
+                .map(|c| Color32::from_rgba_premultiplied(c.red(), c.green(), c.blue(), c.alpha()))
+                .collect(),
+        };
+        self.tex.set(img.clone(), TextureOptions::NEAREST);
         ui.add(
             Image::new(&self.tex)
                 .maintain_aspect_ratio(true)

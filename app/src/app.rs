@@ -49,7 +49,7 @@ impl eframe::App for AppState {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::SidePanel::left("Configuration").show(ctx, |ui| {
             ui.with_layout(Layout::bottom_up(egui::Align::Min), |ui| {
-                self.light.ui(ctx, ui, &self.cfg.light);
+                self.light.ui(ctx, ui, &self.cfg.light, &self.spectrogram.state.paint);
                 ui.with_layout(Layout::default(), |ui| {
                     ScrollArea::vertical().show(ui, |ui| {
                         audio::ui(ui, &mut self.persistent.audio, &mut self.playback);
