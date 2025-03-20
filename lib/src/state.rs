@@ -1,4 +1,4 @@
-use std::{collections::VecDeque, iter};
+use std::{collections::VecDeque, fs, iter};
 
 use derive_more::derive::{Deref, DerefMut};
 use rustfft::num_complex::Complex;
@@ -22,6 +22,7 @@ pub struct AnalysisState {
     pub power: power::PowerData,
     pub light: light::LightData,
     pub paint: paint::PaintData,
+    pub easing: crate::easing::EasingFunctions,
 }
 
 impl AnalysisState {
@@ -33,6 +34,10 @@ impl AnalysisState {
             power: power::PowerData::blank(cfg),
             light: light::LightData::blank(cfg),
             paint: paint::PaintData::blank(cfg),
+            easing: fs::read_to_string("easing.toml")
+                .ok()
+                .and_then(|s| toml::from_str(&s).ok())
+                .unwrap_or_default(),
         }
     }
 
@@ -56,6 +61,7 @@ impl AnalysisState {
             power,
             light,
             paint,
+            easing: prev.easing,
         }
     }
 }

@@ -17,12 +17,13 @@ log = "0.4"
 lib = { path = "../lib" }
 
 rodio = { git = "https://github.com/RustAudio/rodio.git", rev = "b0f5e2748ac37d78c786152d053dd64c82121bd2" }
-serde = { workspace = true }
-median = { workspace = true }
-toml = "0.8.19"
+serde.workspace = true
+median.workspace = true
+toml.workspace = true
 take_mut = "0.2.2"
 strum = { version = "0.26.3", features = ["derive"] }
 png = "0.17.16"
+fields-iter.workspace = true
 
 # native:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]

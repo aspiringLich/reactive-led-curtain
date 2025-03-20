@@ -25,7 +25,7 @@ impl LightData {
     pub fn advance(mut self, cfg: &AnalysisConfig, power: &PowerData) -> Self {
         spiked_d(&mut self.p_raw, &power.p_filtered_power);
         spiked_d(&mut self.bp_raw, &power.p_bass_power);
-        self.percussive.consume(self.p_raw);
+        self.percussive.consume(self.p_raw - self.bp_raw);
         self.bass_percussive.consume(self.bp_raw);
         self
     }

@@ -69,7 +69,6 @@ fn read_dir(dir: &Path) -> io::Result<Vec<String>> {
 pub fn ui(ui: &mut Ui, audio: &mut Audio, playback: &mut Playback) {
     ui.style_mut().spacing.combo_height = f32::INFINITY;
 
-    ui.heading("Playback");
     ui.horizontal(|ui| {
         ui.label("Folder");
         let folder_edit = ui.add(TextEdit::singleline(&mut audio.folder));

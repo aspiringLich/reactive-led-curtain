@@ -1,9 +1,7 @@
 use std::{
     borrow::Cow,
-    collections::VecDeque,
     fs::File,
     io::BufWriter,
-    iter::{self, repeat},
     sync::mpsc::{Receiver, Sender},
     time::Duration,
 };

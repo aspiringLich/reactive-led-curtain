@@ -173,6 +173,7 @@ dependencies = [
  "egui",
  "egui_plot",
  "env_logger",
+ "fields-iter",
  "lib",
  "log",
  "median",
@@ -740,7 +741,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "775cfde491852059e386c4e1deb4aef381c617dc364184c6f6afee99b87c402b"
 dependencies = [
  "bytemuck",
- "emath",
+ "emath 0.29.1",
  "serde",
 ]
 
@@ -790,7 +791,7 @@ checksum = "53eafabcce0cb2325a59a98736efe0bf060585b437763f8c476957fb274bb974"
 dependencies = [
  "accesskit",
  "ahash",
- "emath",
+ "emath 0.29.1",
  "epaint",
  "log",
  "nohash-hasher",
@@ -860,7 +861,7 @@ checksum = "d8dca4871c15d51aadb79534dcf51a8189e5de3426ee7b465eb7db9a0a81ea67"
 dependencies = [
  "ahash",
  "egui",
- "emath",
+ "emath 0.29.1",
 ]
 
 [[package]]
@@ -876,6 +877,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b1fe0049ce51d0fb414d029e668dd72eb30bc2b739bf34296ed97bd33df544f3"
 dependencies = [
  "bytemuck",
+ "serde",
+]
+
+[[package]]
+name = "emath"
+version = "0.31.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9e4cadcff7a5353ba72b7fea76bf2122b5ebdbc68e8155aa56dfdea90083fe1b"
+dependencies = [
  "serde",
 ]
 
@@ -932,7 +942,7 @@ dependencies = [
  "ahash",
  "bytemuck",
  "ecolor",
- "emath",
+ "emath 0.29.1",
  "epaint_default_fonts",
  "log",
  "nohash-hasher",
@@ -975,6 +985,25 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1e6853b52649d4ac5c0bd02320cddc5ba956bdb407c4b75a2c6b75bf51500f8c"
 dependencies = [
  "simd-adler32",
+]
+
+[[package]]
+name = "fields-iter"
+version = "0.0.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3edfbdc0f742f479dece939ba9c3999962c95d324849ae764dfcebd419fb884b"
+dependencies = [
+ "fields-iter-macros",
+]
+
+[[package]]
+name = "fields-iter-macros"
+version = "0.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c0d7d1a714a91ae8b40f541b455eb63c84157511ec30bee8649ca8db27453412"
+dependencies = [
+ "quote",
+ "syn 1.0.109",
 ]
 
 [[package]]
@@ -1568,11 +1597,14 @@ version = "0.1.0"
 dependencies = [
  "derive_more",
  "ecolor",
+ "emath 0.31.1",
+ "fields-iter",
  "garde",
  "median",
  "rustfft",
  "serde",
  "tiny-skia",
+ "toml",
 ]
 
 [[package]]

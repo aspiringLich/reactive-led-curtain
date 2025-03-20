@@ -3,6 +3,7 @@ use egui::{
     WidgetText,
 };
 use egui_plot::{Line, Plot, PlotPoints};
+use fields_iter::{FieldsInspect, FieldsIter};
 use strum::IntoEnumIterator;
 
 use std::collections::VecDeque;
@@ -18,6 +19,24 @@ pub fn enum_combobox<T: IntoEnumIterator + ToString + PartialEq + Copy>(
         .show_ui(ui, |ui| {
             T::iter()
                 .map(|v| ui.selectable_value(value, v, v.to_string()))
+                .collect()
+        })
+}
+
+pub fn struct_combobox<T: FieldsInspect, F: Clone + PartialEq + 'static>(
+    ui: &mut Ui,
+    t: &T,
+    id_salt: impl std::hash::Hash,
+    label: impl Into<WidgetText>,
+    value: &mut (&'static str, F),
+) -> InnerResponse<Option<Vec<Response>>> {
+    ComboBox::new(id_salt, label)
+        .selected_text(value.0)
+        .show_ui(ui, |ui| {
+            FieldsIter::new(t)
+                .map(|(name, val)| {
+                    ui.selectable_value(value, (name, val.downcast_ref::<F>().unwrap().clone()), name)
+                })
                 .collect()
         })
 }

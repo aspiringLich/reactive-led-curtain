@@ -6,6 +6,7 @@ use app::AppState;
 
 mod app;
 mod audio;
+mod easing;
 mod light;
 mod spectrogram;
 mod util;

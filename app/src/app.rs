@@ -1,16 +1,20 @@
 use std::{fs, sync::mpsc::channel};
 
-use egui::{Frame, Layout, ScrollArea};
+use egui::{CollapsingHeader, Frame, Layout, ScrollArea};
 use lib::cfg::AnalysisConfig;
 
-use crate::{audio, light, spectrogram};
+use crate::{audio, easing, light, spectrogram};
 
 #[derive(serde::Deserialize, serde::Serialize, Default)]
 #[serde(default)]
 pub struct PersistentAppState {
     pub audio: audio::Audio,
     pub spec_cfg: spectrogram::SpecConfig,
+    #[serde(skip)]
+    pub easing: lib::easing::EasingFunctions,
 }
+
+
 
 pub struct AppState {
     pub persistent: PersistentAppState,
@@ -18,6 +22,7 @@ pub struct AppState {
     pub playback: audio::Playback,
     pub spectrogram: spectrogram::Spectrogram,
     pub light: light::Light,
+    pub ease: easing::EaseEditor,
 }
 
 impl AppState {
@@ -31,9 +36,12 @@ impl AppState {
             .ok()
             .and_then(|s| toml::from_str::<AnalysisConfig>(&s).ok())
             .unwrap_or_default();
+
+        let spectrogram = spectrogram::Spectrogram::new(&cc.egui_ctx, &cfg, sample_rx, audio_tx);
         Self {
             playback: audio::Playback::new(&mut persistent.audio, sample_tx, audio_rx, &cfg),
-            spectrogram: spectrogram::Spectrogram::new(&cc.egui_ctx, &cfg, sample_rx, audio_tx),
+            ease: easing::EaseEditor::new(&spectrogram.state.easing),
+            spectrogram,
             light: light::Light::new(&cc.egui_ctx, &cfg.light),
             persistent,
             cfg,
@@ -43,29 +51,48 @@ impl AppState {
 
 impl eframe::App for AppState {
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
+        self.persistent.easing = self.spectrogram.state.easing.clone();
         eframe::set_value::<PersistentAppState>(storage, eframe::APP_KEY, &self.persistent);
     }
 
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::SidePanel::left("Configuration").show(ctx, |ui| {
             ui.with_layout(Layout::bottom_up(egui::Align::Min), |ui| {
-                self.light.ui(ctx, ui, &self.cfg.light, &self.spectrogram.state.paint);
+                self.light
+                    .ui(ctx, ui, &self.cfg.light, &self.spectrogram.state.paint);
                 ui.with_layout(Layout::default(), |ui| {
                     ScrollArea::vertical().show(ui, |ui| {
-                        audio::ui(ui, &mut self.persistent.audio, &mut self.playback);
-                        audio::playback(&self.cfg, &mut self.persistent.audio, &mut self.playback);
+                        CollapsingHeader::new("Audio").show(ui, |ui| {
+                            audio::ui(ui, &mut self.persistent.audio, &mut self.playback);
+                            audio::playback(
+                                &self.cfg,
+                                &mut self.persistent.audio,
+                                &mut self.playback,
+                            );
+                        });
                         ui.separator();
-                        self.persistent.spec_cfg.ui(
-                            ui,
-                            &mut self.cfg,
-                            &mut self.playback,
-                            &mut self.persistent.audio,
-                            &mut self.spectrogram,
-                        );
+                        CollapsingHeader::new("Spectrogram").show(ui, |ui| {
+                            self.persistent.spec_cfg.ui(
+                                ui,
+                                &mut self.cfg,
+                                &mut self.playback,
+                                &mut self.persistent.audio,
+                                &mut self.spectrogram,
+                            );
+                        });
                         ui.separator();
-                        let export = ui.button("Export config to `config.toml`");
+                        CollapsingHeader::new("Easing").show(ui, |ui| {
+                            self.ease.ui(ui, self.spectrogram.state.easing.clone());
+                        });
+
+                        let export = ui.button("Export config");
                         if export.clicked() {
                             fs::write("config.toml", toml::to_string(&self.cfg).unwrap()).unwrap();
+                            fs::write(
+                                "easing.toml",
+                                toml::to_string(&self.spectrogram.state.easing).unwrap(),
+                            )
+                            .unwrap();
                         }
                     });
                 });

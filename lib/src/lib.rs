@@ -3,6 +3,7 @@
 
 pub mod cfg;
 pub mod color;
+pub mod easing;
 pub mod state;
 pub mod unit;
 pub mod util;
