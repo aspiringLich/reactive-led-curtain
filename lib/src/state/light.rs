@@ -23,15 +23,15 @@ impl LightData {
     }
 
     pub fn advance(mut self, cfg: &AnalysisConfig, power: &PowerData) -> Self {
-        spiked_d_smooth(&mut self.p_raw, &power.p_filtered_power);
-        spiked_d_smooth(&mut self.bp_raw, &power.p_bass_power);
+        spiked_d_smooth(&mut self.p_raw, &power.p_filtered_power, &cfg.light);
+        spiked_d_smooth(&mut self.bp_raw, &power.p_bass_power, &cfg.light);
         self.percussive.consume(self.p_raw - self.bp_raw);
         self.bass_percussive.consume(self.bp_raw);
         self
     }
 }
 
-fn spiked_d_smooth(l: &mut f32, d: &DData<f32>) {
+fn spiked_d_smooth(l: &mut f32, d: &DData<f32>, cfg: &LightConfig) {
     let dval = if d.dval > 0.0 { d.dval } else { 0.0 };
     *l = f32::max(0.0, *l + dval);
     *l *= 0.9;
@@ -42,6 +42,7 @@ fn spiked_d_smooth(l: &mut f32, d: &DData<f32>) {
 pub struct LightConfig {
     pub width: u32,
     pub height: u32,
+    pub decay: f32,
 }
 
 impl Default for LightConfig {
@@ -49,6 +50,7 @@ impl Default for LightConfig {
         Self {
             width: 20,
             height: 26,
+            decay: 0.95,
         }
     }
 }

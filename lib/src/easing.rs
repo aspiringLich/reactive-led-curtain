@@ -36,7 +36,7 @@ impl Default for EasingFunction {
 impl EasingFunction {
     /// Ease x and output y in the domain [0, 1]
     pub fn ease_normalize(&mut self, x: f32) -> f32 {
-        let x = (x / self.range()).clamp(0.0, 1.0);
+        let x = ((x - self.min) / self.range()).clamp(0.0, 1.0);
         self.last_x = x;
         let y = self.variant.solve(x);
         y
@@ -44,7 +44,7 @@ impl EasingFunction {
 
     /// Ease x and output y in x's domain
     pub fn ease(&mut self, x: f32) -> f32 {
-        self.ease_normalize(x) * (self.max - self.min) + self.min
+        self.ease_normalize(x) * self.range() + self.min
     }
 
     pub fn range(&self) -> f32 {

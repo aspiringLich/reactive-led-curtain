@@ -10,6 +10,7 @@ pub struct PaintData {
     pub pix: Pixmap,
 }
 
+
 impl PaintData {
     pub fn blank(cfg: &AnalysisConfig) -> Self {
         Self {

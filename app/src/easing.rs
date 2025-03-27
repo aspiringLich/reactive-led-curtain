@@ -1,5 +1,5 @@
 use egui::{Color32, Pos2};
-use egui_plot::{Line, MarkerShape, PlotPoint, PlotUi, Points};
+use egui_plot::{Line, MarkerShape, PlotUi, Points};
 use fields_iter::{FieldsIter, FieldsIterMut};
 use lib::{
     Vec2,
@@ -69,7 +69,7 @@ fn handle(ui: &mut PlotUi, origin: [f64; 2], handle: &mut lib::Vec2, id: u16, re
 impl EaseEditor {
     pub fn new(ease: &EasingFunctions) -> Self {
         Self {
-            selected: FieldsIter::new(ease).next().map(|(n, v)| n).unwrap(),
+            selected: FieldsIter::new(ease).next().map(|(n, _)| n).unwrap(),
             handle_reserved: 0,
         }
     }
@@ -108,8 +108,8 @@ impl EaseEditor {
                 // dbg!(ease.last_x);
                 ui.points(
                     Points::new([drawn.x as f64, drawn.y as f64])
-                        .shape(MarkerShape::Cross)
-                        .radius(5.0),
+                        .shape(MarkerShape::Cross).color(Color32::RED)
+                        .radius(10.0),
                 );
             });
         ui.label("Min");

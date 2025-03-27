@@ -1,5 +1,5 @@
 [percussive]
-min = 40.0
+min = 10.0
 max = 100.0
 type = "cubic_bezier"
 p1 = [0.0, 0.5222638249397278]

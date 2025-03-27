@@ -17,3 +17,4 @@ h_factor = 2.0
 [light]
 width = 20
 height = 26
+decay = 0.949999988079071
