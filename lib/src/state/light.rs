@@ -34,7 +34,7 @@ impl LightData {
 fn spiked_d_smooth(l: &mut f32, d: &DData<f32>, cfg: &LightConfig) {
     let dval = if d.dval > 0.0 { d.dval } else { 0.0 };
     *l = f32::max(0.0, *l + dval);
-    *l *= 0.9;
+    *l *= cfg.decay;
 }
 
 #[derive(Deserialize, Serialize)]
