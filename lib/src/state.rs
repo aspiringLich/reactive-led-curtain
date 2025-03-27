@@ -52,7 +52,7 @@ impl AnalysisState {
         let fft = fft::FftData::new(prev.fft.fft.clone(), cfg, prev.buffer.iter().cloned());
         let hps = prev.hps.advance(cfg, &fft);
         let power = power::PowerData::new(cfg, &hps, prev.power);
-        let paint = prev.paint.advance(&prev.light);
+        let paint = prev.paint.advance(&mut prev.easing, &prev.light);
         let light = prev.light.advance(cfg, &power);
         Self {
             buffer: prev.buffer,

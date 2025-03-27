@@ -82,7 +82,7 @@ impl eframe::App for AppState {
                         });
                         ui.separator();
                         CollapsingHeader::new("Easing").show(ui, |ui| {
-                            self.ease.ui(ui, self.spectrogram.state.easing.clone());
+                            self.ease.ui(ui, &mut self.spectrogram.state.easing);
                         });
 
                         let export = ui.button("Export config");

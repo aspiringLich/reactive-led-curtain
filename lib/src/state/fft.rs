@@ -117,19 +117,19 @@ impl InverseStft {
         let hops = self.fft.len() / self.hop_len;
         (0..self.hop_len)
             .into_iter()
-            .rev()
             .map(move |r| {
                 let mut sum = 0.0;
                 let mut w_sum = 0.0;
                 for n in 0..hops {
-                    let i = (hops - n) * self.hop_len - r - 1;
+                    let i = (hops - n - 1) * self.hop_len + r;
                     let w = hann_window(i, self.fft.len());
-                    sum += self.samples[n][i] * w * w;
+                    sum += self.samples[n][i] * w;
                     w_sum += w * w;
                 }
-                sum / w_sum / self.fft.len() as f32
+                sum / w_sum
             })
-            .map(|f| (f * i16::MAX as f32) as i16)
+            .map(|f| f as i16)
+            // .map(|f| (f * i16::MAX as f32) as i16)
     }
 }
 

@@ -211,7 +211,7 @@ impl Playback {
                 *val += state.hps.percussive[i] * audio.percussive as u32 as f32;
             }
 
-            self.audio_sink.set_volume(3.0);
+            self.audio_sink.set_volume(20.0);
             self.istft.push(spec.0).collect()
         } else {
             self.audio_sink.set_volume(1.0);

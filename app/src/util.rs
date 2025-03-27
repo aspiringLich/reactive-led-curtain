@@ -23,19 +23,19 @@ pub fn enum_combobox<T: IntoEnumIterator + ToString + PartialEq + Copy>(
         })
 }
 
-pub fn struct_combobox<T: FieldsInspect, F: Clone + PartialEq + 'static>(
+pub fn struct_combobox<T: FieldsInspect>(
     ui: &mut Ui,
     t: &T,
     id_salt: impl std::hash::Hash,
     label: impl Into<WidgetText>,
-    value: &mut (&'static str, F),
+    value: &mut &'static str
 ) -> InnerResponse<Option<Vec<Response>>> {
     ComboBox::new(id_salt, label)
-        .selected_text(value.0)
+        .selected_text(*value)
         .show_ui(ui, |ui| {
             FieldsIter::new(t)
-                .map(|(name, val)| {
-                    ui.selectable_value(value, (name, val.downcast_ref::<F>().unwrap().clone()), name)
+                .map(|(name, _)| {
+                    ui.selectable_value(value, name, name)
                 })
                 .collect()
         })

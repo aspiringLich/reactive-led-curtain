@@ -14,6 +14,9 @@ pub struct EasingFunction {
     pub max: f32,
     #[serde(flatten)]
     pub variant: EasingFunctionVariant,
+    /// Last value of x used in the easing function (0 to 1)
+    #[serde(skip)]
+    pub last_x: f32,
 }
 
 impl Default for EasingFunction {
@@ -25,22 +28,27 @@ impl Default for EasingFunction {
                 p1: Vec2::new(0.5, 0.0),
                 p2: Vec2::new(0.5, 1.0),
             }),
+            last_x: 0.5,
         }
     }
 }
 
 impl EasingFunction {
     /// Ease x and output y in the domain [0, 1]
-    pub fn ease_normalize(&self, x: f32) -> f32 {
-        let range = self.max - self.min;
-        let x = (x / range).clamp(0.0, 1.0);
+    pub fn ease_normalize(&mut self, x: f32) -> f32 {
+        let x = (x / self.range()).clamp(0.0, 1.0);
+        self.last_x = x;
         let y = self.variant.solve(x);
         y
     }
 
     /// Ease x and output y in x's domain
-    pub fn ease(&self, x: f32) -> f32 {
+    pub fn ease(&mut self, x: f32) -> f32 {
         self.ease_normalize(x) * (self.max - self.min) + self.min
+    }
+
+    pub fn range(&self) -> f32 {
+        self.max - self.min
     }
 }
 
@@ -57,14 +65,20 @@ impl EasingFunctionVariant {
             EasingFunctionVariant::CubicBezier(bezier) => bezier.solve(x),
         }
     }
+
+    pub fn parametric(&self, t: f32) -> Vec2 {
+        match self {
+            EasingFunctionVariant::CubicBezier(bezier) => bezier.parametric(t),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct CubicBezier {
     #[serde(with = "vec2_as_tuple")]
-    p1: Vec2,
+    pub p1: Vec2,
     #[serde(with = "vec2_as_tuple")]
-    p2: Vec2,
+    pub p2: Vec2,
 }
 
 mod vec2_as_tuple {

@@ -23,17 +23,18 @@ impl LightData {
     }
 
     pub fn advance(mut self, cfg: &AnalysisConfig, power: &PowerData) -> Self {
-        spiked_d(&mut self.p_raw, &power.p_filtered_power);
-        spiked_d(&mut self.bp_raw, &power.p_bass_power);
+        spiked_d_smooth(&mut self.p_raw, &power.p_filtered_power);
+        spiked_d_smooth(&mut self.bp_raw, &power.p_bass_power);
         self.percussive.consume(self.p_raw - self.bp_raw);
         self.bass_percussive.consume(self.bp_raw);
         self
     }
 }
 
-fn spiked_d(l: &mut f32, d: &DData<f32>) {
-    let dval = if d.dval > 0.0 { d.dval } else { d.dval * 3.0 };
+fn spiked_d_smooth(l: &mut f32, d: &DData<f32>) {
+    let dval = if d.dval > 0.0 { d.dval } else { 0.0 };
     *l = f32::max(0.0, *l + dval);
+    *l *= 0.9;
 }
 
 #[derive(Deserialize, Serialize)]

@@ -1,7 +1,7 @@
 use ecolor::Color32;
 use tiny_skia::{Color, Paint, Pixmap};
 
-use crate::cfg::AnalysisConfig;
+use crate::{cfg::AnalysisConfig, easing::EasingFunctions};
 
 use super::{light::LightData, AnalysisState};
 
@@ -17,9 +17,10 @@ impl PaintData {
         }
     }
 
-    pub fn advance(mut self, light: &LightData) -> Self {
+    pub fn advance(mut self, easing: &mut EasingFunctions, light: &LightData) -> Self {
+        let back = easing.percussive.ease_normalize(light.percussive.average());
         self.pix.fill(
-            Color32::WHITE.gamma_multiply(light.percussive.average().max(0.0) / 100.0).into_color(),
+            Color32::WHITE.gamma_multiply(back).into_color(),
         );
         self
     }
