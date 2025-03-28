@@ -1,11 +1,11 @@
 use ecolor::Color32;
 use tiny_skia::{
-    Color, GradientStop, LinearGradient, Mask, Paint, Pixmap, Point, Rect, SpreadMode, Transform,
+    Color, GradientStop, LinearGradient, Paint, Pixmap, Point, Rect, SpreadMode, Transform,
 };
 
 use crate::{cfg::AnalysisConfig, easing::EasingFunctions};
 
-use super::{AnalysisState, light::LightData};
+use super::light::LightData;
 
 #[derive(Clone)]
 pub struct PaintData {
@@ -26,27 +26,28 @@ impl PaintData {
         let center_bottom = Point::from_xy(w / 2.0, h);
         let full = Rect::from_ltrb(0.0, 0.0, w, h).unwrap();
 
+        self.pix.fill(Color32::BLACK.into_color());
+
         // PERCUSSIVE BACKGROUND
         let p = easing.percussive.ease_normalize(light.percussive.average());
-        let b = easing.percussive.ease_normalize(light.bass_percussive.average());
+        let b = easing
+            .percussive
+            .ease_normalize(light.bass_percussive.average());
         let mut paint = Paint::default();
-        paint.set_color(Color::WHITE);
+        paint.set_color(Color32::WHITE.into_color());
         paint.shader = LinearGradient::new(
             center_top,
             center_bottom,
             vec![
-                GradientStop::new(0.0, Color::BLACK),
-                GradientStop::new(1.0, Color32::WHITE.gamma_multiply(p).into_color()),
+                GradientStop::new(0.0, Color32::WHITE.linear_multiply(p.max(0.0)).into_color()),
+                GradientStop::new(1.0, Color32::WHITE.linear_multiply(b.max(0.0)).into_color()),
             ],
             SpreadMode::Pad,
             Transform::identity(),
-        ).unwrap();
-        self.pix.fill_rect(
-            full,
-            &paint,
-            Transform::identity(),
-            None,
-        );
+        )
+        .unwrap();
+        self.pix
+            .fill_rect(full, &paint, Transform::identity(), None);
         self
     }
 }
