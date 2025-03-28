@@ -1,12 +1,11 @@
 use std::{collections::VecDeque, fs, iter};
 
 use derive_more::derive::{Deref, DerefMut};
+use fields_iter::FieldsIterMut;
 use rustfft::num_complex::Complex;
 
 use crate::{
-    cfg::AnalysisConfig,
-    unit::{Db, Power},
-    util::{vec_clone, vec_default},
+    cfg::AnalysisConfig, easing::EasingFunction, unit::{Db, Power}, util::{vec_clone, vec_default}
 };
 
 pub mod fft;
@@ -49,6 +48,7 @@ impl AnalysisState {
         prev.buffer.drain(0..cfg.fft.hop_len);
         prev.buffer.extend(hop_samples);
 
+        FieldsIterMut::new(&mut prev.easing).filter_map(|(_, f)| f.downcast_mut::<EasingFunction>()).for_each(|f| f.last_x.clear());
         let fft = fft::FftData::new(prev.fft.fft.clone(), cfg, prev.buffer.iter().cloned());
         let hps = prev.hps.advance(cfg, &fft);
         let power = power::PowerData::new(cfg, &hps, prev.power);

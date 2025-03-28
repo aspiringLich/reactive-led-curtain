@@ -3,6 +3,7 @@ use egui_plot::{Line, MarkerShape, PlotUi, Points};
 use fields_iter::{FieldsIter, FieldsIterMut};
 use lib::{
     Vec2,
+    color::Oklch,
     easing::{CubicBezier, EasingFunction, EasingFunctionVariant, EasingFunctions},
 };
 
@@ -76,25 +77,18 @@ impl EaseEditor {
 
     pub fn ui(&mut self, ui: &mut egui::Ui, easing: &mut EasingFunctions) {
         struct_combobox(ui, &easing, "easing_combo", "Easing", &mut self.selected);
-                let ease = FieldsIterMut::new(easing)
-                    .find(|(n, _)| *n == self.selected)
-                    .and_then(|v| v.1.downcast_mut::<EasingFunction>())
-                    .unwrap();
+        let ease = FieldsIterMut::new(easing)
+            .find(|(n, _)| *n == self.selected)
+            .and_then(|v| v.1.downcast_mut::<EasingFunction>())
+            .unwrap();
         uninteractable_plot("easing_plot")
             .view_aspect(1.0)
             .show(ui, |ui| {
                 let mut points = Vec::new();
-                let mut drawn = Vec2::default();
-                let mut d = false;
                 for t in 0..=100 {
                     let t = t as f32 / 100.0;
                     let res = ease.variant.parametric(t);
                     points.push([res.x as f64, res.y as f64]);
-
-                    if !d && t > ease.last_x {
-                        drawn = res;
-                        d = true;
-                    }
                 }
                 ui.line(Line::new(points).color(Color32::WHITE));
 
@@ -106,11 +100,20 @@ impl EaseEditor {
                     }
                 }
                 // dbg!(ease.last_x);
-                ui.points(
-                    Points::new([drawn.x as f64, drawn.y as f64])
-                        .shape(MarkerShape::Cross).color(Color32::RED)
-                        .radius(10.0),
-                );
+                let colors: Vec<Color32> = vec![
+                    Oklch::LIGHT.red().into(),
+                    Oklch::LIGHT.green().into(),
+                    Oklch::LIGHT.blue().into(),
+                ];
+                for (i, &x) in ease.last_x.iter().enumerate() {
+                    let y = ease.variant.solve(x);
+                    ui.points(
+                        Points::new([x as f64, y as f64])
+                            .shape(MarkerShape::Plus)
+                            .color(colors[i.rem_euclid(colors.len())])
+                            .radius(10.0),
+                    );
+                }
             });
         ui.label("Min");
         float_edit_field(ui, &mut ease.min);

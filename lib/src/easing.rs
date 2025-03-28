@@ -16,7 +16,7 @@ pub struct EasingFunction {
     pub variant: EasingFunctionVariant,
     /// Last value of x used in the easing function (0 to 1)
     #[serde(skip)]
-    pub last_x: f32,
+    pub last_x: Vec<f32>,
 }
 
 impl Default for EasingFunction {
@@ -28,7 +28,7 @@ impl Default for EasingFunction {
                 p1: Vec2::new(0.5, 0.0),
                 p2: Vec2::new(0.5, 1.0),
             }),
-            last_x: 0.5,
+            last_x: vec![],
         }
     }
 }
@@ -37,7 +37,7 @@ impl EasingFunction {
     /// Ease x and output y in the domain [0, 1]
     pub fn ease_normalize(&mut self, x: f32) -> f32 {
         let x = ((x - self.min) / self.range()).clamp(0.0, 1.0);
-        self.last_x = x;
+        self.last_x.push(x);
         let y = self.variant.solve(x);
         y
     }
