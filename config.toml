@@ -7,6 +7,7 @@ min_frequency = 20.0
 [fft]
 frame_len = 4096
 hop_len = 1024
+sample_rate = 44100
 
 [hps]
 p_filter_span = 10
@@ -17,4 +18,4 @@ h_factor = 2.0
 [light]
 width = 20
 height = 26
-decay = 0.949999988079071
+decay = 0.92

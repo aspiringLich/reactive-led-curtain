@@ -135,7 +135,7 @@ impl SpecConfig {
             spec.spec.reset();
             let mut state = AnalysisState::blank(cfg);
             let time = decoder.get_pos();
-            let hop_duration = Duration::from_secs_f32(cfg.fft.hop_len as f32 / 44_100.0);
+            let hop_duration = Duration::from_secs_f32(cfg.fft.hop_len as f32 / cfg.fft.sample_rate as f32);
 
             decoder
                 .try_seek(

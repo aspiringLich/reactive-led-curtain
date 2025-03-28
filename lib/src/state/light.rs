@@ -13,7 +13,7 @@ pub struct LightData {
 }
 
 impl LightData {
-    pub fn blank(cfg: &AnalysisConfig) -> Self {
+    pub fn blank(_cfg: &AnalysisConfig) -> Self {
         Self {
             p_raw: 0.0,
             bp_raw: 0.0,

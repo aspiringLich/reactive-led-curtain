@@ -128,8 +128,8 @@ impl InverseStft {
                 }
                 sum / w_sum
             })
-            .map(|f| f as i16)
-            // .map(|f| (f * i16::MAX as f32) as i16)
+            .map(|f| (f * 20.0) as i16)
+        // .map(|f| (f * i16::MAX as f32) as i16)
     }
 }
 
@@ -165,6 +165,7 @@ impl InverseStft {
 pub struct FftConfig {
     pub frame_len: usize,
     pub hop_len: usize,
+    pub sample_rate: usize,
 }
 
 impl Default for FftConfig {
@@ -172,6 +173,7 @@ impl Default for FftConfig {
         Self {
             frame_len: 4096,
             hop_len: 1024,
+            sample_rate: 44100,
         }
     }
 }

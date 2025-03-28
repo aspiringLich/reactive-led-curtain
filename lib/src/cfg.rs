@@ -12,14 +12,17 @@ pub struct AnalysisConfig {
 }
 
 impl AnalysisConfig {
-    /// Assumes a sample rate of 44.1kHz
+    pub const fn frame_duration(&self) -> f32 {
+        self.fft.frame_len as f32 / self.fft.sample_rate as f32
+    }
+
     pub const fn idx_to_hz(&self, i: usize) -> f32 {
-        i as f32 * 44_100.0 / self.fft.frame_len as f32
+        i as f32 / self.frame_duration()
     }
 
     /// Assumes a sample rate of 44.1kHz
     pub const fn hz_to_idx(&self, hz: f32) -> usize {
-        (hz / 44_100.0 * self.fft.frame_len as f32) as usize
+        (hz * self.frame_duration()) as usize
     }
 
     pub const fn min_idx(&self) -> usize {
