@@ -4,16 +4,18 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-derive_more = { version = "1.0.0", features = ["deref", "deref_mut"] }
-rustfft = "6.2.0"
 serde.workspace = true
 garde.workspace = true
 median.workspace = true
 toml.workspace = true
+fields-iter.workspace = true
+
+derive_more = { version = "1.0.0", features = ["deref", "deref_mut"] }
+rustfft = "6.2.0"
 ecolor = "0.29"
 tiny-skia = { version = "0.11.4", default-features = false, features = [
     "simd",
     "std",
 ] }
 emath = { version = "0.31.1", features = ["serde"] }
-fields-iter.workspace = true
+# ebur128 = "0.1.10"

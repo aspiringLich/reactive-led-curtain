@@ -29,6 +29,12 @@ impl Into<f32> for Db {
 #[derive(Clone, Copy, Debug, Deref, Default, PartialEq, PartialOrd)]
 pub struct Power(pub f32);
 
+impl Into<f32> for Power {
+    fn into(self) -> f32 {
+        self.sqrt()
+    }
+}
+
 impl Into<Power> for f32 {
     fn into(self) -> Power {
         Power(self * self)

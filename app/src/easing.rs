@@ -1,4 +1,4 @@
-use egui::{Color32, Pos2};
+use egui::{Color32, Pos2, Slider, SliderClamping};
 use egui_plot::{Line, MarkerShape, PlotUi, Points};
 use fields_iter::{FieldsIter, FieldsIterMut};
 use lib::{
@@ -115,18 +115,21 @@ impl EaseEditor {
                     );
                 }
             });
-        ui.label("Min");
-        float_edit_field(ui, &mut ease.min);
-        ui.label("Max");
-        float_edit_field(ui, &mut ease.max);
+        ui.horizontal(|ui| {
+            ui.label("Min");
+            ui.add(Slider::new(&mut ease.min, 0.0..=5.0).clamping(SliderClamping::Never));
+        });
+        ui.horizontal(|ui| {
+            ui.label("Max");
+            ui.add(Slider::new(&mut ease.max, 0.0..=5.0).clamping(SliderClamping::Never));
+        });
     }
 }
 
-fn float_edit_field(ui: &mut egui::Ui, value: &mut f32) -> egui::Response {
-    let mut tmp_value = format!("{}", value);
-    let res = ui.text_edit_singleline(&mut tmp_value);
-    if let Ok(result) = tmp_value.parse() {
-        *value = result;
-    }
-    res
-}
+// fn float_edit_field(ui: &mut egui::Ui, value: &mut f32, s: &mut String) -> egui::Response {
+//     let res = ui.text_edit_singleline(s);
+//     if let Ok(result) = s.parse() {
+//         *value = result;
+//     }
+//     res
+// }
