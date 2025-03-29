@@ -32,7 +32,7 @@ impl LightData {
 }
 
 fn spiked_d_smooth(l: &mut f32, d: &DData<f32>, cfg: &LightConfig) {
-    let dval = if d.dval > 0.0 { d.dval } else { d.dval / 2.0 };
+    let dval = if d.dval > 0.0 { d.dval } else { d.dval * 0.2 };
     *l = f32::max(0.0, *l + dval);
     *l *= cfg.decay;
 }
@@ -43,6 +43,7 @@ pub struct LightConfig {
     pub width: u32,
     pub height: u32,
     pub decay: f32,
+    pub gui_delay: u32,
 }
 
 impl Default for LightConfig {
@@ -51,6 +52,7 @@ impl Default for LightConfig {
             width: 20,
             height: 26,
             decay: 0.95,
+            gui_delay: 0,
         }
     }
 }

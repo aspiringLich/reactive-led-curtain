@@ -29,19 +29,21 @@ impl PaintData {
         self.pix.fill(Color32::BLACK.into_color());
 
         // PERCUSSIVE BACKGROUND
-        let p = easing.percussive.ease_normalize(light.percussive.average());
-        let b = easing
-            .percussive
-            .ease_normalize(light.bass_percussive.average());
+        let p = light.percussive.average();
+        let b = light.bass_percussive.average();
         let mut paint = Paint::default();
         paint.set_color(Color32::WHITE.into_color());
+        let mut pcol = Color::WHITE;
+        let ratio = p / (p + b + f32::EPSILON);
+        const FACTOR: f32 = 0.9;
+        // pcol.apply_opacity(easing.percussive.ease_normalize(p * (1.0 / FACTOR - 1.0 + ratio) * FACTOR));
+        pcol.apply_opacity(easing.percussive.ease_normalize(p));
+        let mut bcol = Color::WHITE;
+        bcol.apply_opacity(easing.percussive.ease_normalize(b));
         paint.shader = LinearGradient::new(
             center_top,
             center_bottom,
-            vec![
-                GradientStop::new(0.0, Color32::WHITE.linear_multiply(p.max(0.0)).into_color()),
-                GradientStop::new(1.0, Color32::WHITE.linear_multiply(b.max(0.0)).into_color()),
-            ],
+            vec![GradientStop::new(0.0, pcol), GradientStop::new(1.0, bcol)],
             SpreadMode::Pad,
             Transform::identity(),
         )
@@ -52,11 +54,11 @@ impl PaintData {
     }
 }
 
-trait IntoColor {
+trait Methods {
     fn into_color(&self) -> Color;
 }
 
-impl IntoColor for Color32 {
+impl Methods for Color32 {
     fn into_color(&self) -> Color {
         Color::from_rgba8(self.r(), self.g(), self.b(), self.a())
     }

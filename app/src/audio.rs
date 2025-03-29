@@ -67,7 +67,6 @@ fn read_dir(dir: &Path) -> io::Result<Vec<String>> {
 }
 
 pub fn ui(ui: &mut Ui, audio: &mut Audio, playback: &mut Playback) {
-    ui.style_mut().spacing.combo_height = f32::INFINITY;
 
     ui.horizontal(|ui| {
         ui.label("Folder");
@@ -77,6 +76,7 @@ pub fn ui(ui: &mut Ui, audio: &mut Audio, playback: &mut Playback) {
             audio.file = String::new();
         }
     });
+    ui.style_mut().spacing.combo_height = f32::INFINITY;
     let file_select = ComboBox::from_label("File")
         .selected_text(&audio.file)
         .show_ui(ui, |ui| {

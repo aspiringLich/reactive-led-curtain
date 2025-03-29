@@ -16,7 +16,6 @@ pub struct PowerData {
     pub p_filtered_power: DData<f32>,
     pub p_bass_power: DData<f32>,
     // pub dp_filtered: f32,
-
     pub ratio_h_p: RollingAverage,
 }
 
@@ -51,7 +50,6 @@ impl PowerData {
                 })
                 .collect(),
         );
-        let p_filtered_power = p_filtered.power(cfg);
         let p_bass_power = AudibleSpec(
             p_filtered.0[0..10]
                 .iter()
@@ -60,6 +58,7 @@ impl PowerData {
                 .collect(),
         )
         .power(cfg);
+        let p_filtered_power = p_filtered.power(cfg) - p_bass_power;
 
         let mut ratio_h_p = prev.ratio_h_p;
         ratio_h_p.consume(ratio(h_power_raw, p_filtered_power));
@@ -80,7 +79,6 @@ impl PowerData {
 fn ratio(a: f32, b: f32) -> f32 {
     a / (a.abs() + b.abs() + 1e-4) * b.signum()
 }
-
 
 trait DataAdvance<T: Clone> {
     fn advance(&self, new: T) -> Self;
