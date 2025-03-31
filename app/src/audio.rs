@@ -10,7 +10,7 @@ use std::{
     time::Duration,
 };
 
-use egui::{Button, Checkbox, ComboBox, Slider, TextEdit, Ui, mutex::Mutex};
+use egui::{Button, Checkbox, ComboBox, Key, Modifiers, Slider, TextEdit, Ui, mutex::Mutex};
 use lib::{
     Complex,
     cfg::AnalysisConfig,
@@ -67,6 +67,11 @@ fn read_dir(dir: &Path) -> io::Result<Vec<String>> {
 }
 
 pub fn ui(ui: &mut Ui, audio: &mut Audio, playback: &mut Playback) {
+    ui.input(|state| {
+        if state.key_pressed(Key::Space) {
+            audio.playing = !audio.playing;
+        }
+    });
 
     ui.horizontal(|ui| {
         ui.label("Folder");
@@ -99,20 +104,28 @@ pub fn ui(ui: &mut Ui, audio: &mut Audio, playback: &mut Playback) {
             let text = if audio.playing { "⏸" } else { "⏵" };
             let play_toggle = ui.button(text);
 
-            let mut total_duration = decoder.total_duration().unwrap().as_secs_f32();
+            let total_duration = decoder.total_duration().unwrap().as_secs_f32();
 
             if play_toggle.clicked() {
                 audio.playing = !audio.playing;
             }
 
             audio.progress = decoder.get_pos().as_secs_f32();
-            if total_duration < audio.progress {
-                total_duration = audio.progress;
-            }
+            let mut seek = false;
+            ui.input_mut(|state| {
+                if state.count_and_consume_key(Modifiers::NONE, Key::ArrowLeft) > 0 {
+                    audio.progress -= 5.0;
+                    seek = true;
+                }
+                if state.count_and_consume_key(Modifiers::NONE, Key::ArrowRight) > 0 {
+                    audio.progress += 5.0;
+                    seek = true;
+                }
+            });
             let slider: egui::Response =
                 ui.add(Slider::new(&mut audio.progress, 0.0..=total_duration).show_value(false));
 
-            if slider.changed() {
+            if slider.changed() || seek{
                 decoder
                     .try_seek(Duration::from_secs_f32(audio.progress))
                     .unwrap();
