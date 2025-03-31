@@ -2,6 +2,7 @@ use std::collections::VecDeque;
 
 use egui::{Color32, ColorImage, Context, Image, TextureHandle, TextureOptions, Ui};
 use lib::state::{light::LightConfig, paint::PaintData};
+use puffin_egui::puffin;
 
 pub struct Light {
     tex: TextureHandle,
@@ -20,6 +21,7 @@ impl Light {
     }
 
     pub fn ui(&mut self, _ctx: &Context, ui: &mut Ui, cfg: &LightConfig, paint: &PaintData) {
+        puffin::profile_function!();
         let img = ColorImage {
             size: [cfg.width as usize, cfg.height as usize],
             pixels: paint

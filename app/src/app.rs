@@ -1,7 +1,8 @@
 use std::{fs, sync::mpsc::channel};
 
-use egui::{CollapsingHeader, Frame, Layout, ScrollArea};
+use egui::{CollapsingHeader, Frame, Key, Layout, ScrollArea};
 use lib::cfg::AnalysisConfig;
+use puffin_egui::puffin;
 
 use crate::{audio, easing, light, spectrogram};
 
@@ -14,8 +15,6 @@ pub struct PersistentAppState {
     pub easing: lib::easing::EasingFunctions,
 }
 
-
-
 pub struct AppState {
     pub persistent: PersistentAppState,
     pub cfg: AnalysisConfig,
@@ -23,6 +22,7 @@ pub struct AppState {
     pub spectrogram: spectrogram::Spectrogram,
     pub light: light::Light,
     pub ease: easing::EaseEditor,
+    pub debug: bool,
 }
 
 impl AppState {
@@ -45,6 +45,7 @@ impl AppState {
             light: light::Light::new(&cc.egui_ctx, &cfg.light),
             persistent,
             cfg,
+            debug: false,
         }
     }
 }
@@ -56,6 +57,19 @@ impl eframe::App for AppState {
     }
 
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        if ctx.input(|state| state.key_pressed(Key::D) && state.modifiers.shift) {
+            self.debug = !self.debug;
+        }
+
+        if self.debug {
+            puffin_egui::profiler_window(ctx);
+            puffin::set_scopes_on(true);
+            puffin::GlobalProfiler::lock().new_frame();
+            puffin::profile_function!();
+        } else {
+            puffin::set_scopes_on(false);
+        }
+
         egui::SidePanel::left("Configuration").show(ctx, |ui| {
             ui.with_layout(Layout::bottom_up(egui::Align::Min), |ui| {
                 self.light

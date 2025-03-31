@@ -13,7 +13,7 @@ sample_rate = 44100
 p_filter_span = 8
 h_filter_span = 30
 p_factor = 2.5
-h_factor = 7.0
+h_factor = 2.0
 
 [light]
 width = 20

@@ -6,6 +6,7 @@ use lib::{
     color::Oklch,
     easing::{CubicBezier, EasingFunction, EasingFunctionVariant, EasingFunctions},
 };
+use puffin_egui::puffin;
 
 use crate::util::{struct_combobox, uninteractable_plot};
 
@@ -76,6 +77,7 @@ impl EaseEditor {
     }
 
     pub fn ui(&mut self, ui: &mut egui::Ui, easing: &mut EasingFunctions) {
+        puffin::profile_function!();
         struct_combobox(ui, &easing, "easing_combo", "Easing", &mut self.selected);
         let ease = FieldsIterMut::new(easing)
             .find(|(n, _)| *n == self.selected)

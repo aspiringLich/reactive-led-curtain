@@ -16,6 +16,7 @@ use lib::{
     cfg::AnalysisConfig,
     state::{AnalysisState, RawSpec, fft},
 };
+use puffin_egui::puffin;
 use rodio::{
     Decoder, OutputStream, Sink, Source,
     buffer::SamplesBuffer,
@@ -67,6 +68,7 @@ fn read_dir(dir: &Path) -> io::Result<Vec<String>> {
 }
 
 pub fn ui(ui: &mut Ui, audio: &mut Audio, playback: &mut Playback) {
+    puffin::profile_function!();
     ui.input(|state| {
         if state.key_pressed(Key::Space) {
             audio.playing = !audio.playing;
@@ -232,6 +234,7 @@ impl Playback {
 }
 
 pub fn playback(cfg: &AnalysisConfig, audio: &mut Audio, playback: &mut Playback) {
+    puffin::profile_function!();
     // *sigh* okay this is very jank but the vec cannot be sent between threads
     // because the callback in `EmptyCallback` has to satisfy `Fn`
     static SAMPLE_QUEUE: OnceLock<Mutex<VecDeque<Vec<i16>>>> = OnceLock::new();

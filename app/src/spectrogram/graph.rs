@@ -4,6 +4,7 @@ use lib::{
     color::Oklch,
     state::{AnalysisState, light::LightData, power::PowerData},
 };
+use puffin_egui::puffin;
 
 use std::convert::Infallible;
 
@@ -56,6 +57,7 @@ impl Graph {
     }
 
     pub fn ui(&mut self, state: &mut GraphState, ctx: &egui::Context) {
+        puffin::profile_function!();
         let mut window = state.window;
         let ui = |ui: &mut Ui| {
             ui.horizontal(|ui| {

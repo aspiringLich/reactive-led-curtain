@@ -13,6 +13,7 @@ use lib::{
     state::{AnalysisState, AudibleSpec},
     unit,
 };
+use puffin_egui::puffin;
 use rodio::Source;
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumIter};
@@ -74,6 +75,7 @@ impl SpecConfig {
         audio: &mut audio::Audio,
         spec: &mut Spectrogram,
     ) {
+        puffin::profile_function!();
         ui.heading("Spectrogram");
         egui::Grid::new("spec_grid")
             .num_columns(2)
@@ -300,8 +302,14 @@ impl Spectrogram {
 }
 
 pub fn ui(ui: &mut Ui, state: &mut AppState) {
+    puffin::profile_function!();
     let spec = &mut state.spectrogram;
+
+    let mut i = 0;
     while let Ok(samples) = spec.sample_rx.try_recv() {
+        puffin::profile_scope!("sample_rx.try_recv", i.to_string());
+        i += 1;
+
         let hop_len = state.cfg.fft.hop_len;
         assert_eq!(samples.len(), hop_len);
 
@@ -317,7 +325,10 @@ pub fn ui(ui: &mut Ui, state: &mut AppState) {
         take_mut::take_or_recover(
             &mut spec.state,
             || AnalysisState::blank(&state.cfg),
-            |s| AnalysisState::from_prev(&state.cfg, s, samples.iter().cloned()),
+            |s| {
+                puffin::profile_scope!("AnalysisState::from_prev");
+                AnalysisState::from_prev(&state.cfg, s, samples.iter().cloned())
+            },
         );
 
         spec.spec.update_from_db(
