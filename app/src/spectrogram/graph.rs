@@ -214,7 +214,7 @@ impl Graph {
                 .unwrap_or(true);
         } else {
             let panel = TopBottomPanel::top("top")
-                .frame(Frame::default().inner_margin(Vec2::new(0.0, 5.0)))
+                .frame(Frame::default().inner_margin(Vec2::new(0.0, 5.0)).fill(ctx.style().visuals.panel_fill))
                 .resizable(true);
             state.window = panel.show(ctx, ui).inner;
         }
