@@ -62,7 +62,7 @@ impl eframe::App for AppState {
         }
 
         if self.debug {
-            puffin_egui::profiler_window(ctx);
+            self.debug = puffin_egui::profiler_window(ctx);
             puffin::set_scopes_on(true);
             puffin::GlobalProfiler::lock().new_frame();
             puffin::profile_function!();
