@@ -10,8 +10,8 @@ hop_len = 1024
 sample_rate = 44100
 
 [hps]
-p_filter_span = 10
-h_filter_span = 20
+p_filter_span = 8
+h_filter_span = 30
 p_factor = 2.5
 h_factor = 7.0
 

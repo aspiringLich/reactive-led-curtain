@@ -51,10 +51,10 @@ impl PowerData {
                 .collect(),
         );
         let p_bass_power = AudibleSpec(
-            p_filtered.0[0..10]
+            p_filtered.0[0..12]
                 .iter()
                 .enumerate()
-                .map(|(i, &x)| Power(*x * f32::min((10 - i) as f32 / 6.0, 1.0)))
+                .map(|(i, &x)| Power(*x * f32::min((12 - i) as f32 / 4.0, 1.0)))
                 .collect(),
         )
         .power(cfg);
