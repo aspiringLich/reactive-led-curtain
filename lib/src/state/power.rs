@@ -1,6 +1,6 @@
 use std::ops::Sub;
 
-use crate::{cfg::AnalysisConfig, unit::Power, util::RollingAverage};
+use crate::{cfg::AnalysisConfig, unit::Power, util::{profile_function, RollingAverage}};
 
 use super::{AudibleSpec, hps::HpsData};
 
@@ -34,6 +34,7 @@ impl PowerData {
     }
 
     pub fn new(cfg: &AnalysisConfig, data: &HpsData, prev: PowerData) -> Self {
+        profile_function!();
         let h_power_raw = data.harmonic.power(cfg);
         let r_power_raw = data.residual.power(cfg);
         let dr = r_power_raw - prev.r_power_raw;

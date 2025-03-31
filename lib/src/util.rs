@@ -2,6 +2,24 @@ use std::collections::VecDeque;
 
 use derive_more::derive::Deref;
 
+
+macro_rules! profile_function {
+    ($($args:tt)*) => {
+        #[cfg(feature = "profiling")]
+        ::puffin_egui::puffin::profile_function!($($args)*);
+    };
+}
+pub(crate) use profile_function;
+
+macro_rules! profile_scope {
+    ($($args:tt)*) => {
+        #[cfg(feature = "profiling")]
+        ::puffin_egui::puffin::profile_scope!($($args)*);
+    };
+}
+pub(crate) use profile_scope;
+
+
 pub fn vec_default<T: Default>(len: usize) -> Vec<T> {
     Vec::from_iter((0..len).into_iter().map(|_| Default::default()))
 }

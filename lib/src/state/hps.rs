@@ -1,7 +1,7 @@
 use rustfft::num_complex::Complex;
 use serde::{Deserialize, Serialize};
 
-use crate::{cfg::AnalysisConfig, unit::Power};
+use crate::{cfg::AnalysisConfig, unit::Power, util::{profile_function, profile_scope}};
 
 use super::{AudibleSpec, fft::FftData};
 
@@ -35,18 +35,22 @@ impl HpsData {
     }
 
     pub fn advance(mut self, cfg: &AnalysisConfig, fft: &FftData) -> Self {
+        profile_function!();
         let hps = &cfg.hps;
 
+        profile_scope!("past_magnitudes");
         self.past_magnitudes.mutate(|i, filter| {
             filter.consume(fft.power[i]);
         });
 
+        profile_scope!("h_enhanced");
         self.h_enhanced = AudibleSpec(
             self.past_magnitudes
                 .iter()
                 .map(|buf| buf.median())
                 .collect(),
         );
+        profile_scope!("p_enhanced");
         let mut filter = median::Filter::new(hps.p_filter_span);
         self.p_enhanced = AudibleSpec(
             fft.power
@@ -63,6 +67,7 @@ impl HpsData {
             mask_p: f32,
         }
 
+        profile_scope!("masks");
         let masks = fft
             .audible
             .iter()
@@ -84,6 +89,7 @@ impl HpsData {
             })
             .collect::<Vec<_>>();
 
+        profile_scope!("hps");
         self.harmonic
             .update(|i, _| fft.audible[i] * masks[i].mask_h);
         self.percussive

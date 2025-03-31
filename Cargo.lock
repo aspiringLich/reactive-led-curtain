@@ -1670,6 +1670,7 @@ dependencies = [
  "fields-iter",
  "garde",
  "median",
+ "puffin_egui",
  "rustfft",
  "serde",
  "tiny-skia",

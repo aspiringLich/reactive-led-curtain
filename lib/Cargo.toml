@@ -19,3 +19,8 @@ tiny-skia = { version = "0.11.4", default-features = false, features = [
 ] }
 emath = { version = "0.31.1", features = ["serde"] }
 # ebur128 = "0.1.10"
+
+puffin_egui = { workspace = true, optional = true }
+
+[features]
+profiling = ["puffin_egui"]

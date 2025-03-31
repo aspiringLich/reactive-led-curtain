@@ -8,6 +8,7 @@ garde = { version = "0.22.0", features = ["derive", "serde"] }
 median = "0.3.2"
 toml = "0.8.19"
 fields-iter = "0.0.3"
+puffin_egui = { git = "https://github.com/aspiringLich/puffin.git" } # https://github.com/EmbarkStudios/puffin/issues/233
 
 [profile.dev.package."*"]
 opt-level = 3

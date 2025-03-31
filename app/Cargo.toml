@@ -14,7 +14,7 @@ eframe = { version = "0.29.1", default-features = false, features = [
 ] }
 log = "0.4"
 
-lib = { path = "../lib" }
+lib = { path = "../lib", features = ["profiling"] }
 
 rodio = { git = "https://github.com/RustAudio/rodio.git", rev = "b0f5e2748ac37d78c786152d053dd64c82121bd2" }
 serde.workspace = true
@@ -24,7 +24,7 @@ take_mut = "0.2.2"
 strum = { version = "0.26.3", features = ["derive"] }
 png = "0.17.16"
 fields-iter.workspace = true
-puffin_egui = { git = "https://github.com/aspiringLich/puffin.git" } # https://github.com/EmbarkStudios/puffin/issues/233
+puffin_egui.workspace = true
 
 # native:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]

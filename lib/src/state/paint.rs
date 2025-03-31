@@ -3,7 +3,7 @@ use tiny_skia::{
     Color, GradientStop, LinearGradient, Paint, Pixmap, Point, Rect, SpreadMode, Transform,
 };
 
-use crate::{cfg::AnalysisConfig, easing::EasingFunctions};
+use crate::{cfg::AnalysisConfig, easing::EasingFunctions, util::profile_function};
 
 use super::light::LightData;
 
@@ -20,6 +20,7 @@ impl PaintData {
     }
 
     pub fn advance(mut self, easing: &mut EasingFunctions, light: &LightData) -> Self {
+        profile_function!();
         let w = self.pix.width() as f32;
         let h = self.pix.height() as f32;
         let center_top = Point::from_xy(w / 2.0, 0.0);

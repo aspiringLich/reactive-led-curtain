@@ -137,18 +137,21 @@ impl SpecConfig {
             spec.spec.reset();
             let mut state = AnalysisState::blank(cfg);
             let time = decoder.get_pos();
-            let hop_duration = Duration::from_secs_f32(cfg.fft.hop_len as f32 / cfg.fft.sample_rate as f32);
+            let hop_duration =
+                Duration::from_secs_f32(cfg.fft.hop_len as f32 / cfg.fft.sample_rate as f32);
 
             decoder
                 .try_seek(
-                    time.checked_sub(
-                        hop_duration * (cfg.spectrogram.time_width) as u32,
-                    )
-                    .unwrap_or_default(),
+                    time.checked_sub(hop_duration * (cfg.spectrogram.time_width) as u32)
+                        .unwrap_or_default(),
                 )
                 .unwrap();
 
-            while decoder.get_pos() < time.checked_sub(Duration::from_secs_f32(0.001)).unwrap_or_default() {
+            while decoder.get_pos()
+                < time
+                    .checked_sub(Duration::from_secs_f32(0.001))
+                    .unwrap_or_default()
+            {
                 let hop = decoder.take(cfg.fft.hop_len).collect::<Vec<_>>();
                 state = AnalysisState::from_prev(cfg, state, hop.into_iter());
                 spec.spec.update_from_db(&specdata(self.data, &state), self);
@@ -305,11 +308,7 @@ pub fn ui(ui: &mut Ui, state: &mut AppState) {
     puffin::profile_function!();
     let spec = &mut state.spectrogram;
 
-    let mut i = 0;
     while let Ok(samples) = spec.sample_rx.try_recv() {
-        puffin::profile_scope!("sample_rx.try_recv", i.to_string());
-        i += 1;
-
         let hop_len = state.cfg.fft.hop_len;
         assert_eq!(samples.len(), hop_len);
 
@@ -325,10 +324,7 @@ pub fn ui(ui: &mut Ui, state: &mut AppState) {
         take_mut::take_or_recover(
             &mut spec.state,
             || AnalysisState::blank(&state.cfg),
-            |s| {
-                puffin::profile_scope!("AnalysisState::from_prev");
-                AnalysisState::from_prev(&state.cfg, s, samples.iter().cloned())
-            },
+            |s| AnalysisState::from_prev(&state.cfg, s, samples.iter().cloned()),
         );
 
         spec.spec.update_from_db(

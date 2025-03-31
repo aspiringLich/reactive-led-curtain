@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{cfg::AnalysisConfig, util::RollingAverage};
+use crate::{cfg::AnalysisConfig, util::{profile_function, RollingAverage}};
 
 use super::power::{DData, PowerData};
 
@@ -23,6 +23,7 @@ impl LightData {
     }
 
     pub fn advance(mut self, cfg: &AnalysisConfig, power: &PowerData) -> Self {
+        profile_function!();
         spiked_d_smooth(&mut self.p_raw, &power.p_filtered_power, &cfg.light);
         spiked_d_smooth(&mut self.bp_raw, &power.p_bass_power, &cfg.light);
         self.percussive.consume((self.p_raw + 1.0).log2());

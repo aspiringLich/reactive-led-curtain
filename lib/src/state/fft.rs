@@ -2,7 +2,7 @@ use rustfft::{Fft, FftPlanner, num_complex::Complex};
 use serde::{Deserialize, Serialize};
 use std::{collections::VecDeque, f32::consts::PI, iter, sync::Arc};
 
-use crate::{cfg::AnalysisConfig, unit};
+use crate::{cfg::AnalysisConfig, unit, util::profile_function};
 
 use super::{AudibleSpec, RawSpec};
 
@@ -31,6 +31,7 @@ impl FftData {
         cfg: &AnalysisConfig,
         samples: impl ExactSizeIterator<Item = i16>,
     ) -> Self {
+        profile_function!();
         let raw = RawSpec(fft_samples(fft.as_ref(), samples));
         let audible = raw.audible_slice(cfg).into_iter().cloned().collect();
         let db = raw

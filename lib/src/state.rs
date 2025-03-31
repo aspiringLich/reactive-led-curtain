@@ -8,7 +8,7 @@ use crate::{
     cfg::AnalysisConfig,
     easing::EasingFunction,
     unit::{Db, Power},
-    util::{vec_clone, vec_default},
+    util::{profile_function, vec_clone, vec_default},
 };
 
 pub mod fft;
@@ -49,6 +49,8 @@ impl AnalysisState {
         mut prev: AnalysisState,
         hop_samples: impl ExactSizeIterator<Item = i16>,
     ) -> Self {
+        profile_function!();
+
         prev.buffer.drain(0..cfg.fft.hop_len);
         prev.buffer.extend(hop_samples);
 
