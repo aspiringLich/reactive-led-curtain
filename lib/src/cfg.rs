@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::state::{fft, hps, light};
+use crate::state::{fft, hps, light, loudness};
 
 #[derive(Deserialize, Serialize, Default)]
 #[serde(default)]
@@ -9,6 +9,7 @@ pub struct AnalysisConfig {
     pub fft: fft::FftConfig,
     pub hps: hps::HpsConfig,
     pub light: light::LightConfig,
+    pub loudness: loudness::LoudnessConfig,
 }
 
 impl AnalysisConfig {
@@ -50,6 +51,14 @@ impl AnalysisConfig {
 
     pub fn hops(&self) -> usize {
         self.fft.frame_len / self.fft.hop_len
+    }
+
+    pub fn ebur(&self) -> ebur128::EbuR128 {
+        ebur128::EbuR128::new(
+            1,
+            self.fft.sample_rate as u32,
+            ebur128::Mode::S | ebur128::Mode::M,
+        ).unwrap()
     }
 }
 

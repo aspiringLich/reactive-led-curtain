@@ -9,9 +9,7 @@ use std::{
 use egui::{ColorImage, Context, Image, Slider, TextureHandle, Ui};
 
 use lib::{
-    cfg::AnalysisConfig,
-    state::{AnalysisState, AudibleSpec},
-    unit,
+    cfg::AnalysisConfig, ebur128::EbuR128, state::{AnalysisState, AudibleSpec}, unit
 };
 use puffin_egui::puffin;
 use rodio::Source;
@@ -153,7 +151,7 @@ impl SpecConfig {
                     .unwrap_or_default()
             {
                 let hop = decoder.take(cfg.fft.hop_len).collect::<Vec<_>>();
-                state = AnalysisState::from_prev(cfg, state, hop.into_iter());
+                state = AnalysisState::from_prev(cfg, state, hop.into_iter(), &mut spec.ebur);
                 spec.spec.update_from_db(&specdata(self.data, &state), self);
             }
             decoder.try_seek(time).unwrap();
@@ -279,6 +277,7 @@ pub struct Spectrogram {
     audio_tx: Sender<Vec<i16>>,
     pub state: AnalysisState,
     pub hps_energy: graph::Graph,
+    pub ebur: EbuR128,
 }
 
 impl Spectrogram {
@@ -300,6 +299,7 @@ impl Spectrogram {
             audio_tx,
             state: AnalysisState::blank(cfg),
             hps_energy: graph::Graph::new(512),
+            ebur: cfg.ebur(),
         }
     }
 }
@@ -324,7 +324,7 @@ pub fn ui(ui: &mut Ui, state: &mut AppState) {
         take_mut::take_or_recover(
             &mut spec.state,
             || AnalysisState::blank(&state.cfg),
-            |s| AnalysisState::from_prev(&state.cfg, s, samples.iter().cloned()),
+            |s| AnalysisState::from_prev(&state.cfg, s, samples.iter().cloned(), &mut spec.ebur),
         );
 
         spec.spec.update_from_db(

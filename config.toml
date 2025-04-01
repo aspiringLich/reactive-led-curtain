@@ -20,3 +20,7 @@ width = 20
 height = 26
 decay = 0.8999999761581421
 gui_delay = 1
+
+[loudness]
+target_lufs = -15.0
+factor = 0.4

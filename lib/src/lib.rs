@@ -11,3 +11,4 @@ pub mod util;
 
 pub use rustfft::{Fft, FftDirection, FftPlanner, num_complex::Complex};
 pub use emath::Vec2;
+pub use ebur128;

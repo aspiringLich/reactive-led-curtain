@@ -1,6 +1,7 @@
 use std::{collections::VecDeque, fs, iter};
 
 use derive_more::derive::{Deref, DerefMut};
+use ebur128::EbuR128;
 use fields_iter::FieldsIterMut;
 use rustfft::num_complex::Complex;
 
@@ -8,13 +9,13 @@ use crate::{
     cfg::AnalysisConfig,
     easing::EasingFunction,
     unit::{Db, Power},
-    util::{profile_function, vec_clone, vec_default},
+    util::{profile_function, profile_scope, vec_clone, vec_default},
 };
 
 pub mod fft;
 pub mod hps;
 pub mod light;
-// pub mod loudness;
+pub mod loudness;
 pub mod paint;
 pub mod power;
 
@@ -48,11 +49,12 @@ impl AnalysisState {
         cfg: &AnalysisConfig,
         mut prev: AnalysisState,
         hop_samples: impl ExactSizeIterator<Item = i16>,
+        ebur: &mut EbuR128,
     ) -> Self {
         profile_function!();
 
         prev.buffer.drain(0..cfg.fft.hop_len);
-        prev.buffer.extend(hop_samples);
+        prev.buffer.extend(cfg.loudness.normalize(hop_samples, ebur));
 
         FieldsIterMut::new(&mut prev.easing)
             .filter_map(|(_, f)| f.downcast_mut::<EasingFunction>())

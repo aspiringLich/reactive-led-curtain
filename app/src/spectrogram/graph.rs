@@ -5,6 +5,7 @@ use lib::{
     state::{AnalysisState, light::LightData, power::PowerData},
 };
 use puffin_egui::puffin;
+use strum::{Display, EnumIter, IntoEnumIterator};
 
 use std::convert::Infallible;
 
@@ -38,7 +39,7 @@ pub struct Graph {
     len: usize,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Default)]
+#[derive(Serialize, Deserialize, PartialEq, Default, EnumIter, Display)]
 enum Tab {
     #[default]
     Hrp,
@@ -61,29 +62,10 @@ impl Graph {
         let mut window = state.window;
         let ui = |ui: &mut Ui| {
             ui.horizontal(|ui| {
-                if ui
-                    .add(Button::new("HPS Power").selected(state.tab == Tab::Hrp))
-                    .clicked()
-                {
-                    state.tab = Tab::Hrp;
-                }
-                if ui
-                    .add(Button::new("Percussive").selected(state.tab == Tab::Percussive))
-                    .clicked()
-                {
-                    state.tab = Tab::Percussive;
-                }
-                if ui
-                    .add(Button::new("Ratios").selected(state.tab == Tab::Ratios))
-                    .clicked()
-                {
-                    state.tab = Tab::Ratios;
-                }
-                if ui
-                    .add(Button::new("Light").selected(state.tab == Tab::Light))
-                    .clicked()
-                {
-                    state.tab = Tab::Light;
+                for tab in Tab::iter() {
+                    if ui.add(Button::new(tab.to_string()).selected(state.tab == tab)).clicked() {
+                        state.tab = tab;
+                    }
                 }
                 ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                     if ui
