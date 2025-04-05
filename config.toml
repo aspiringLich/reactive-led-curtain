@@ -1,7 +1,7 @@
 [spectrogram]
 time_width = 512
 image_resolution = 512
-max_frequency = 8000.0
+max_frequency = 10000.0
 min_frequency = 20.0
 
 [fft]
@@ -22,5 +22,5 @@ decay = 0.8999999761581421
 gui_delay = 1
 
 [loudness]
-target_lufs = -15.0
-factor = 0.4
+target_lufs = -10.0
+factor = 0.8

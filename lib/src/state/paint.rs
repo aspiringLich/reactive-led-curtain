@@ -34,12 +34,13 @@ impl PaintData {
         let b = light.bass_percussive.average();
         let mut paint = Paint::default();
         paint.set_color(Color32::WHITE.into_color());
-        const FACTOR: f32 = 0.2;
-        let ratio = p / (p + b + f32::EPSILON) * FACTOR;
+        const FACTOR: f32 = 0.3;
+        let ratio = p / (p + b + f32::EPSILON) * FACTOR * FACTOR;
         let mut pcol = Color::WHITE;
         pcol.apply_opacity(easing.percussive.ease_normalize(p) * (1.0 + ratio));
         // pcol.apply_opacity(easing.percussive.ease_normalize(p));
         let mut bcol = Color::WHITE;
+        let ratio = p / (p + b + f32::EPSILON) * FACTOR  ;
         bcol.apply_opacity(easing.percussive.ease_normalize(b) * (1.0 - ratio));
         // bcol.apply_opacity(easing.percussive.ease_normalize(b));
         paint.shader = LinearGradient::new(

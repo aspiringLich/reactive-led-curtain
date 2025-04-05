@@ -4,8 +4,9 @@ use serde::{Deserialize, Serialize};
 use crate::util::profile_function;
 
 pub struct LoudnessData {
-    st: f64,
-    m: f64,
+    pub st: f64,
+    pub m: f64,
+    pub gain: f64,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -38,9 +39,11 @@ impl LoudnessConfig {
     }
 
     pub fn data(&self, ebur: &EbuR128) -> LoudnessData {
+        let st = ebur.loudness_shortterm().unwrap();
         LoudnessData {
-            st: ebur.loudness_shortterm().unwrap(),
+            st,
             m: ebur.loudness_momentary().unwrap(),
+            gain: self.gain(st)
         }
     }
 }
