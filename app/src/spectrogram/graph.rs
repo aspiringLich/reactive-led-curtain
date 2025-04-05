@@ -2,7 +2,7 @@ use egui::{Align, Button, Frame, Layout, Slider, TopBottomPanel, Ui, Vec2, Windo
 use egui_plot::{Legend, Plot};
 use lib::{
     color::Oklch,
-    state::{AnalysisState, light::LightData, power::PowerData},
+    state::{AnalysisState, light::LightData, loudness::LoudnessData, power::PowerData},
 };
 use puffin_egui::puffin;
 use strum::{Display, EnumIter, IntoEnumIterator};
@@ -36,6 +36,7 @@ impl Default for GraphState {
 pub struct Graph {
     pdata: DataVec<'static, PowerData, Infallible>,
     ldata: DataVec<'static, LightData, Infallible>,
+    odata: DataVec<'static, LoudnessData, Infallible>,
     len: usize,
 }
 
@@ -46,6 +47,7 @@ enum Tab {
     Percussive,
     Ratios,
     Light,
+    Loudness,
 }
 
 impl Graph {
@@ -53,6 +55,7 @@ impl Graph {
         Self {
             pdata: DataVec::new(len),
             ldata: DataVec::new(len),
+            odata: DataVec::new(len),
             len,
         }
     }
@@ -63,7 +66,10 @@ impl Graph {
         let ui = |ui: &mut Ui| {
             ui.horizontal(|ui| {
                 for tab in Tab::iter() {
-                    if ui.add(Button::new(tab.to_string()).selected(state.tab == tab)).clicked() {
+                    if ui
+                        .add(Button::new(tab.to_string()).selected(state.tab == tab))
+                        .clicked()
+                    {
                         state.tab = tab;
                     }
                 }
@@ -188,6 +194,24 @@ impl Graph {
                                 .color(Oklch::LIGHT.green()),
                         );
                     }),
+                Tab::Loudness => self
+                    .default_plot("loudness", state.legend)
+                    .show(ui, |plot_ui| {
+                        plot_ui.line(
+                            self.odata
+                                .derive(|d| d.st)
+                                .line()
+                                .name("Short Time")
+                                .color(Oklch::LIGHT.green()),
+                        );
+                        plot_ui.line(
+                            self.odata
+                                .derive(|d| d.m)
+                                .line()
+                                .name("Momentary")
+                                .color(Oklch::LIGHT.red()),
+                        );
+                    }),
             };
             window
         };
@@ -198,7 +222,11 @@ impl Graph {
                 .unwrap_or(true);
         } else {
             let panel = TopBottomPanel::top("top")
-                .frame(Frame::default().inner_margin(Vec2::new(0.0, 5.0)).fill(ctx.style().visuals.panel_fill))
+                .frame(
+                    Frame::default()
+                        .inner_margin(Vec2::new(0.0, 5.0))
+                        .fill(ctx.style().visuals.panel_fill),
+                )
                 .resizable(true);
             state.window = panel.show(ctx, ui).inner;
         }
@@ -207,6 +235,7 @@ impl Graph {
     pub fn update(&mut self, state: &AnalysisState) {
         self.pdata.push(state.power.clone());
         self.ldata.push(state.light.clone());
+        self.odata.push(state.loudness.clone());
     }
 
     fn default_plot<'a>(&self, id: impl std::hash::Hash, legend: bool) -> Plot<'a> {

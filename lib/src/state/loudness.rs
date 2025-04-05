@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::util::profile_function;
 
+#[derive(Default, Clone)]
 pub struct LoudnessData {
     pub st: f64,
     pub m: f64,

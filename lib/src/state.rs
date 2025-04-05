@@ -9,7 +9,7 @@ use crate::{
     cfg::AnalysisConfig,
     easing::EasingFunction,
     unit::{Db, Power},
-    util::{profile_function, profile_scope, vec_clone, vec_default},
+    util::{profile_function, vec_clone, vec_default},
 };
 
 pub mod fft;
@@ -25,6 +25,7 @@ pub struct AnalysisState {
     pub hps: hps::HpsData,
     pub power: power::PowerData,
     pub light: light::LightData,
+    pub loudness: loudness::LoudnessData,
     pub paint: paint::PaintData,
     pub easing: crate::easing::EasingFunctions,
 }
@@ -37,6 +38,7 @@ impl AnalysisState {
             hps: hps::HpsData::blank(cfg),
             power: power::PowerData::blank(cfg),
             light: light::LightData::blank(cfg),
+            loudness: loudness::LoudnessData::default(),
             paint: paint::PaintData::blank(cfg),
             easing: fs::read_to_string("easing.toml")
                 .ok()
@@ -55,6 +57,7 @@ impl AnalysisState {
 
         prev.buffer.drain(0..cfg.fft.hop_len);
         prev.buffer.extend(cfg.loudness.normalize(hop_samples, ebur));
+        let loudness = cfg.loudness.data(ebur);
 
         FieldsIterMut::new(&mut prev.easing)
             .filter_map(|(_, f)| f.downcast_mut::<EasingFunction>())
@@ -70,6 +73,7 @@ impl AnalysisState {
             fft,
             power,
             light,
+            loudness,
             paint,
             easing: prev.easing,
         }
