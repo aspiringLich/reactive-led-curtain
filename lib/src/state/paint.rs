@@ -12,6 +12,16 @@ pub struct PaintData {
     pub pix: Pixmap,
 }
 
+struct PaintCtx<'a> {
+    easing: &'a mut EasingFunctions,
+    light: &'a LightData,
+    w: f32,
+    h: f32,
+    center_top: Point,
+    center_bottom: Point,
+    full_rect: Rect,
+}
+
 impl PaintData {
     pub fn blank(cfg: &AnalysisConfig) -> Self {
         Self {
@@ -19,41 +29,58 @@ impl PaintData {
         }
     }
 
-    pub fn advance(mut self, easing: &mut EasingFunctions, light: &LightData) -> Self {
-        profile_function!();
+    fn ctx<'a>(&self, easing: &'a mut EasingFunctions, light: &'a LightData) -> PaintCtx<'a> {
         let w = self.pix.width() as f32;
         let h = self.pix.height() as f32;
         let center_top = Point::from_xy(w / 2.0, 0.0);
         let center_bottom = Point::from_xy(w / 2.0, h);
-        let full = Rect::from_ltrb(0.0, 0.0, w, h).unwrap();
+        let full_rect = Rect::from_ltrb(0.0, 0.0, w, h).unwrap();
+        PaintCtx {
+            easing,
+            light,
+            w,
+            h,
+            center_top,
+            center_bottom,
+            full_rect,
+        }
+    }
+
+    pub fn advance(mut self, easing: &mut EasingFunctions, light: &LightData) -> Self {
+        profile_function!();
+        let mut ctx = self.ctx(easing, light);
 
         self.pix.fill(Color32::BLACK.into_color());
 
-        // PERCUSSIVE BACKGROUND
-        let p = light.percussive.average();
-        let b = light.bass_percussive.average();
+        self.percussive_background(&mut ctx);
+
+        self
+    }
+
+    fn percussive_background<'a>(&mut self, ctx: &mut PaintCtx<'a>) {
+        let p = ctx.light.percussive.average();
+        let b = ctx.light.bass_percussive.average();
         let mut paint = Paint::default();
         paint.set_color(Color32::WHITE.into_color());
         const FACTOR: f32 = 0.3;
         let ratio = p / (p + b + f32::EPSILON) * FACTOR * FACTOR;
         let mut pcol = Color::WHITE;
-        pcol.apply_opacity(easing.percussive.ease_normalize(p) * (1.0 + ratio));
+        pcol.apply_opacity(ctx.easing.percussive.ease_normalize(p) * (1.0 + ratio));
         // pcol.apply_opacity(easing.percussive.ease_normalize(p));
         let mut bcol = Color::WHITE;
-        let ratio = p / (p + b + f32::EPSILON) * FACTOR  ;
-        bcol.apply_opacity(easing.percussive.ease_normalize(b) * (1.0 - ratio));
+        let ratio = p / (p + b + f32::EPSILON) * FACTOR;
+        bcol.apply_opacity(ctx.easing.percussive.ease_normalize(b) * (1.0 - ratio));
         // bcol.apply_opacity(easing.percussive.ease_normalize(b));
         paint.shader = LinearGradient::new(
-            center_top,
-            center_bottom,
+            ctx.center_top,
+            ctx.center_bottom,
             vec![GradientStop::new(0.0, pcol), GradientStop::new(1.0, bcol)],
             SpreadMode::Pad,
             Transform::identity(),
         )
         .unwrap();
         self.pix
-            .fill_rect(full, &paint, Transform::identity(), None);
-        self
+            .fill_rect(ctx.full_rect, &paint, Transform::identity(), None);
     }
 }
 
