@@ -35,6 +35,7 @@ impl PaintData {
         let center_top = Point::from_xy(w / 2.0, 0.0);
         let center_bottom = Point::from_xy(w / 2.0, h);
         let full_rect = Rect::from_ltrb(0.0, 0.0, w, h).unwrap();
+
         PaintCtx {
             easing,
             light,

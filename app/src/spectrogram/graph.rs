@@ -48,6 +48,7 @@ enum Tab {
     Ratios,
     Light,
     Loudness,
+    OctavePower,
 }
 
 impl Graph {
@@ -211,6 +212,33 @@ impl Graph {
                                 .name("Momentary")
                                 .color(Oklch::LIGHT.red()),
                         );
+                    }),
+                Tab::OctavePower => self
+                    .default_plot("octave", state.legend)
+                    .show(ui, |plot_ui| {
+                        let notes = [
+                            (Oklch::LIGHT.red(), "A"),
+                            (Oklch::LIGHT.orange(), "A#/Bb"),
+                            (Oklch::LIGHT.yellow(), "B"),
+                            (Oklch::LIGHT.lime(), "C"),
+                            (Oklch::LIGHT.green(), "C#/Db"),
+                            (Oklch::LIGHT.jade(), "D"),
+                            (Oklch::LIGHT.cyan(), "D#/Eb"),
+                            (Oklch::LIGHT.sky_blue(), "E"),
+                            (Oklch::LIGHT.blue(), "F"),
+                            (Oklch::LIGHT.indigo(), "F#/Gb"),
+                            (Oklch::LIGHT.purple(), "G"),
+                            (Oklch::LIGHT.magenta(), "G#/Ab"),
+                        ];
+                        for (i, (color, name)) in notes.iter().enumerate() {
+                            plot_ui.line(
+                                self.pdata
+                                    .derive(|d| d.octave_power[i])
+                                    .line()
+                                    .name(name)
+                                    .color(color.to_owned()),
+                            )
+                        }
                     }),
             };
             window

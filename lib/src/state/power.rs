@@ -17,6 +17,8 @@ pub struct PowerData {
     pub p_bass_power: DData<f32>,
     // pub dp_filtered: f32,
     pub ratio_h_p: RollingAverage,
+
+    pub octave_power: [f32; 12],
 }
 
 impl PowerData {
@@ -30,6 +32,7 @@ impl PowerData {
             p_filtered_power: Default::default(),
             p_bass_power: Default::default(),
             ratio_h_p: RollingAverage::new(5),
+            octave_power: Default::default(),
         }
     }
 
@@ -65,6 +68,29 @@ impl PowerData {
         let mut ratio_h_p = prev.ratio_h_p;
         ratio_h_p.consume(ratio(h_power_raw, p_filtered_power));
 
+        // A4 = 440Hz
+        // we start at A2 and keep going for 4 octaves
+        const A2: f64 = 110.0;
+        let factor = 2.0f64.powf(1.0 / 12.0);
+        let mut octave_power: [f32; 12] = Default::default();
+
+        let mut before = A2 / factor;
+        let mut f = A2;
+        let mut after = A2 * factor;
+
+        for i in 0..48 {
+            let start = cfg.hz_to_idx((before + f) as f32 / 2.0);
+            let end = cfg.hz_to_idx((after + f) as f32 / 2.0);
+            // dbg!(start, end);
+
+            let p = AudibleSpec(data.harmonic.iter().skip(start).take(end - start).cloned().collect()).power(cfg);
+            octave_power[i % 12] += p;
+
+            before = f;
+            f = after;
+            after *= factor;
+        }
+
         Self {
             h_power_raw,
             r_power_raw,
@@ -74,6 +100,7 @@ impl PowerData {
             p_bass_power: prev.p_bass_power.advance(p_bass_power),
             p_filtered,
             ratio_h_p,
+            octave_power,
         }
     }
 }

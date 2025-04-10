@@ -1,6 +1,9 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{cfg::AnalysisConfig, util::{profile_function, RollingAverage}};
+use crate::{
+    cfg::AnalysisConfig,
+    util::{RollingAverage, profile_function},
+};
 
 use super::power::{DData, PowerData};
 

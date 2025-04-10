@@ -1,5 +1,6 @@
 use ecolor::Color32;
 
+#[derive(Debug, Clone)]
 pub struct Oklch {
     l: f32,
     c: f32,
