@@ -107,12 +107,18 @@ impl EaseEditor {
                     Oklch::LIGHT.green().into(),
                     Oklch::LIGHT.blue().into(),
                 ];
+
                 for (i, &x) in ease.last_x.iter().enumerate() {
+                    let c = if let Some(colors) = &ease.colors {
+                        colors[i % colors.len()].clone().into()
+                    } else {
+                        colors[i % colors.len()]
+                    };
                     let y = ease.variant.solve(x);
                     ui.points(
                         Points::new([x as f64, y as f64])
                             .shape(MarkerShape::Plus)
-                            .color(colors[i.rem_euclid(colors.len())])
+                            .color(c)
                             .radius(10.0),
                     );
                 }

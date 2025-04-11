@@ -2,10 +2,13 @@ use emath::Vec2;
 use fields_iter::FieldsInspect;
 use serde::{Deserialize, Serialize};
 
+use crate::color::Oklch;
+
 #[derive(Default, Debug, Clone, Serialize, Deserialize, FieldsInspect)]
 #[serde(default)]
 pub struct EasingFunctions {
     pub percussive: EasingFunction,
+    pub octave: EasingFunction,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -17,6 +20,34 @@ pub struct EasingFunction {
     /// Last value of x used in the easing function (0 to 1)
     #[serde(skip)]
     pub last_x: Vec<f32>,
+    #[serde(with="oklch")]
+    pub colors: Option<Vec<Oklch>>
+}
+
+mod oklch {
+    use serde::Deserialize;
+    use crate::color::Oklch;
+
+    pub fn serialize<S>(colors: &Option<Vec<Oklch>>, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        match colors {
+            Some(colors) => {
+                let colors_vec: Vec<&str> = colors.iter().map(|c| c.into_hue_str()).collect();
+                serializer.collect_seq(colors_vec)
+            }
+            None => serializer.serialize_none(),
+        }
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<Vec<Oklch>>, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let opt: Option<Vec<String>> = Option::deserialize(deserializer)?;
+        Ok(opt.map(|v| v.into_iter().filter_map(|s| Oklch::light_from_str(&s)).collect::<Vec<_>>()))
+    }
 }
 
 impl Default for EasingFunction {
@@ -29,6 +60,7 @@ impl Default for EasingFunction {
                 p2: Vec2::new(0.5, 1.0),
             }),
             last_x: vec![],
+            colors: None,
         }
     }
 }
@@ -38,7 +70,7 @@ impl EasingFunction {
     pub fn ease_normalize(&mut self, x: f32) -> f32 {
         let x = ((x - self.min) / self.range()).clamp(0.0, 1.0);
         self.last_x.push(x);
-        let y = self.variant.solve(x);
+        let y = self.variant.solve(x).clamp(0.0, 1.0);
         y
     }
 

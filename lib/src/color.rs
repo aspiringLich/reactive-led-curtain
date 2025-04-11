@@ -111,4 +111,13 @@ impl Oklch {
         (grape, 315.0),
         (magenta, 345.0)
     );
+
+    pub fn light_from_str(s: &str) -> Option<Self> {
+        Oklch::LIGHT_COLORS.iter().find(|i| i.1 == s).map(|i| i.2.clone())
+    }
+
+    pub fn into_hue_str(&self) -> &'static str {
+        // doesnt panic because Oklch::LIGHT_COLORS should have stuff in it
+        Oklch::LIGHT_COLORS.iter().min_by_key(|i| (i.0 - self.h).abs() as u32).unwrap().1
+    }
 }

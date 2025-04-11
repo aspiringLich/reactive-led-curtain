@@ -1,6 +1,6 @@
 use ecolor::Color32;
 use tiny_skia::{
-    Color, GradientStop, LinearGradient, Paint, Pixmap, Point, Rect, SpreadMode, Transform,
+    Color, GradientStop, LinearGradient, Paint, Pixmap, Point, Rect, Shader, SpreadMode, Transform
 };
 
 use crate::{cfg::AnalysisConfig, easing::EasingFunctions, util::profile_function};
@@ -26,7 +26,6 @@ impl<'a> PaintCtx<'a> {
     fn vrect(&self, x: f32) -> Rect {
         let w = self.w;
         let h = self.h;
-        let x = x * w;
         Rect::from_ltrb(x, 0.0, x + 1.0, h).unwrap()
     }
 }
@@ -63,6 +62,7 @@ impl PaintData {
         self.pix.fill(Color32::BLACK.into_color());
 
         self.percussive_background(&mut ctx);
+        self.harmonic_lines(&mut ctx);
 
         self
     }
@@ -93,10 +93,14 @@ impl PaintData {
             .fill_rect(ctx.full_rect, &paint, Transform::identity(), None);
     }
 
-    fn harmonic_lines(&mut self, ctx: &mut PaintCtx) {
+    fn harmonic_lines<'a>(&mut self, ctx: &mut PaintCtx<'a>) {
+        let mut paint = Paint::default();
         let padding = ((ctx.w - 12.0) / 2.0).round();
 
         for i in 0..12 {
+            let o = ctx.easing.octave.ease_normalize(ctx.light.octave[i].average());
+            paint.shader = Shader::SolidColor(Color32::RED.gamma_multiply(o).into_color());
+            self.pix.fill_rect(ctx.vrect(padding + i as f32), &paint, Transform::identity(), None);
         }
     }
 }
