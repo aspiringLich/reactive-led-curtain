@@ -21,6 +21,7 @@ emath = { version = "0.31.1", features = ["serde"] }
 ebur128 = "0.1.10"
 
 puffin_egui = { workspace = true, optional = true }
+paste = "1.0.15"
 
 [features]
 profiling = ["puffin_egui"]

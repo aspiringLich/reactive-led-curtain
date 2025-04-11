@@ -1,6 +1,7 @@
 use ecolor::Color32;
+use serde::Serialize;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, PartialEq)]
 pub struct Oklch {
     l: f32,
     c: f32,
@@ -48,12 +49,32 @@ fn linear_to_srgb_clamped(value: f64) -> f64 {
 }
 
 macro_rules! hue_fn {
-    ($name:ident, $hue:expr) => {
-        #[doc = concat!("Sets the hue to ", stringify!($name), " (", $hue, "°) in OKLCH color space.")]
-        pub const fn $name(self) -> Self {
-            Oklch { h: $hue, ..self }
+    ([$_base:ident $(,$base:ident)* $(,)?] $(,($name:ident, $hue:expr))* $(,)?) => {
+        ::paste::paste! {
+            color_const!($_base, [<$_base _COLORS>], $(($name, $hue),)*);
         }
+        hue_fn!([$($base,)*], $(($name, $hue),)*);
     };
+    ([] $(,($name:ident, $hue:expr))* $(,)?) => {
+        $(
+            #[doc = concat!("Sets the hue to ", stringify!($name), " (", $hue, "°) in OKLCH color space.")]
+            pub const fn $name(self) -> Self {
+                Oklch { h: $hue, ..self }
+            }
+        )*
+    };
+}
+
+macro_rules! color_const {
+    ($base:ident, $c:ident $(,($name:ident, $hue:expr))+ $(,)?) => {
+        pub const $c: &[(f32, &str, Oklch)] = &[
+            $(color_const!($base, $name, $hue),)+
+        ];
+    };
+
+    ($base:ident, $name:ident, $hue:expr $(,)?) => {
+        ($hue, stringify!($name), Oklch::$base.$name())
+    }
 }
 
 impl Oklch {
@@ -73,18 +94,21 @@ impl Oklch {
         h: 0.0,
     };
 
-    hue_fn!(fuschia, 0.0);
-    hue_fn!(red, 28.5);
-    hue_fn!(orange, 75.0);
-    hue_fn!(yellow, 100.0);
-    hue_fn!(lime, 120.0);
-    hue_fn!(green, 135.0);
-    hue_fn!(jade, 150.0);
-    hue_fn!(cyan, 175.0);
-    hue_fn!(sky_blue, 200.0);
-    hue_fn!(blue, 230.0);
-    hue_fn!(indigo, 275.0);
-    hue_fn!(purple, 290.0);
-    hue_fn!(grape, 315.0);
-    hue_fn!(magenta, 345.0);
+    hue_fn!(
+        [LIGHT, MED, DIM],
+        (fuschia, 0.0),
+        (red, 28.5),
+        (orange, 75.0),
+        (yellow, 100.0),
+        (lime, 120.0),
+        (green, 135.0),
+        (jade, 150.0),
+        (cyan, 175.0),
+        (sky_blue, 200.0),
+        (blue, 230.0),
+        (indigo, 275.0),
+        (purple, 290.0),
+        (grape, 315.0),
+        (magenta, 345.0)
+    );
 }

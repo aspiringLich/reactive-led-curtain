@@ -1692,6 +1692,7 @@ dependencies = [
  "fields-iter",
  "garde",
  "median",
+ "paste",
  "puffin_egui",
  "rustfft",
  "serde",
