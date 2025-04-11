@@ -118,10 +118,12 @@ pub fn ui(ui: &mut Ui, audio: &mut Audio, playback: &mut Playback) {
                 if state.count_and_consume_key(Modifiers::NONE, Key::ArrowLeft) > 0 {
                     audio.progress -= 5.0;
                     seek = true;
+                    playback.playing_for = 0;
                 }
                 if state.count_and_consume_key(Modifiers::NONE, Key::ArrowRight) > 0 {
                     audio.progress += 5.0;
                     seek = true;
+                    playback.playing_for = 0;
                 }
             });
             let slider: egui::Response =
@@ -177,6 +179,7 @@ pub struct Playback {
     sample_tx: Sender<Vec<i16>>,
     audio_rx: Receiver<Vec<i16>>,
     istft: fft::InverseStft,
+    playing_for: u32,
 }
 
 impl Playback {
@@ -206,6 +209,7 @@ impl Playback {
             sample_tx,
             audio_rx,
             istft,
+            playing_for: 0,
         }
     }
 
@@ -254,22 +258,26 @@ pub fn playback(cfg: &AnalysisConfig, audio: &mut Audio, playback: &mut Playback
     };
 
     if audio.playing {
+        playback.playing_for += 1;
+    } else {
+        playback.playing_for = 0;
+    }
+
+    if audio.playing {
         let hop_len = cfg.fft.hop_len;
         let target_samples = decoder.sample_rate() as usize / hop_len;
 
+        // if there are no more samples left to read
+        if playback.dummy_sink.len() == 0 && playback.playing_for > 1 {
+            if audio.loop_audio {
+                decoder.try_seek(Duration::from_secs_f32(0.0)).unwrap();
+            } else {
+                audio.playing = false;
+            }
+        }
+
         while playback.dummy_sink.len() < target_samples * 2 {
             let samples = decoder.take(hop_len).collect::<Vec<_>>();
-
-            // if there are no more samples left to read
-            if samples.len() == 0 {
-                if audio.loop_audio {
-                    decoder.try_seek(Duration::from_secs_f32(0.0)).unwrap();
-                    continue;
-                } else {
-                    audio.playing = false;
-                    break;
-                }
-            }
 
             let buffer = SamplesBuffer::new(
                 decoder.channels(),
