@@ -16,6 +16,8 @@ pub struct HpsData {
     pub harmonic: AudibleSpec<Complex<f32>>,
     pub percussive: AudibleSpec<Complex<f32>>,
     pub residual: AudibleSpec<Complex<f32>>,
+    pub h_filtered: AudibleSpec<Power>,
+    pub p_filtered: AudibleSpec<Power>,
 }
 
 impl HpsData {
@@ -35,6 +37,8 @@ impl HpsData {
             harmonic: AudibleSpec::blank_default(cfg),
             percussive: AudibleSpec::blank_default(cfg),
             residual: AudibleSpec::blank_default(cfg),
+            h_filtered: AudibleSpec::blank_default(cfg),
+            p_filtered: AudibleSpec::blank_default(cfg),
         }
     }
 
@@ -103,6 +107,8 @@ impl HpsData {
                 .update(|i, _| fft.audible[i] * masks[i].mask_p);
             self.residual
                 .update(|i, _| fft.audible[i] * (1.0 - masks[i].mask_h - masks[i].mask_p));
+            self.h_filtered.update(|i, _| self.h_enhanced[i] * masks[i].mask_h);
+            self.p_filtered.update(|i, _| self.p_enhanced[i] * masks[i].mask_p);
         }
 
         self

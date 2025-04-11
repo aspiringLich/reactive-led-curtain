@@ -12,7 +12,7 @@ pub struct PowerData {
 
     pub p_power_raw: DData<f32>,
     // pub dp: f32,
-    pub p_filtered: AudibleSpec<Power>,
+    // pub p_filtered: AudibleSpec<Power>,
     pub p_filtered_power: DData<f32>,
     pub p_bass_power: DData<f32>,
     // pub dp_filtered: f32,
@@ -28,7 +28,7 @@ impl PowerData {
             r_power_raw: 0.0,
             dr: 0.0,
             p_power_raw: Default::default(),
-            p_filtered: AudibleSpec::blank_default(cfg),
+            // p_filtered: AudibleSpec::blank_default(cfg),
             p_filtered_power: Default::default(),
             p_bass_power: Default::default(),
             ratio_h_p: RollingAverage::new(5),
@@ -44,26 +44,15 @@ impl PowerData {
 
         let p_power_raw = data.percussive.power(cfg);
 
-        let mut filter = median::Filter::<Power>::new(20);
-        let p_filtered = AudibleSpec(
-            data.percussive
-                .iter()
-                .map(|&d| {
-                    filter.consume(d.into());
-                    filter.median()
-                })
-                .collect(),
-        );
-        // TODO: make this a config option
         let p_bass_power = AudibleSpec(
-            p_filtered.0[0..8]
+            data.p_filtered.0[0..8]
                 .iter()
                 .enumerate()
                 .map(|(i, &x)| Power(*x * f32::min((8 - i) as f32 / 4.0, 1.0)))
                 .collect(),
         )
         .power(cfg);
-        let p_filtered_power = p_filtered.power(cfg) - p_bass_power;
+        let p_filtered_power = data.p_filtered.power(cfg) - p_bass_power;
 
         let mut ratio_h_p = prev.ratio_h_p;
         ratio_h_p.consume(ratio(h_power_raw, p_filtered_power));
@@ -98,7 +87,7 @@ impl PowerData {
             p_power_raw: prev.p_power_raw.advance(p_power_raw),
             p_filtered_power: prev.p_filtered_power.advance(p_filtered_power),
             p_bass_power: prev.p_bass_power.advance(p_bass_power),
-            p_filtered,
+            // p_filtered,
             ratio_h_p,
             octave_power,
         }

@@ -1,3 +1,5 @@
+use std::ops::Mul;
+
 use derive_more::derive::Deref;
 use rustfft::num_complex::Complex;
 
@@ -51,5 +53,13 @@ impl Into<Db> for Power {
 impl Into<Power> for Complex<f32> {
     fn into(self) -> Power {
         Power(self.norm_sqr())
+    }
+}
+
+impl Mul<f32> for Power {
+    type Output = Self;
+
+    fn mul(self, rhs: f32) -> Self::Output {
+        Self(*self * rhs)
     }
 }

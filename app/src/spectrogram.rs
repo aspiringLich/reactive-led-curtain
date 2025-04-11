@@ -49,6 +49,7 @@ pub enum SpecData {
     Harmonic,
     Residual,
     Percussive,
+    HarmonicFiltered,
     PercussiveFiltered,
 }
 
@@ -352,6 +353,7 @@ fn specdata<'a>(data: SpecData, state: &'a AnalysisState) -> Cow<'a, AudibleSpec
         SpecData::Harmonic => o(state.hps.harmonic.into_db()),
         SpecData::Residual => o(state.hps.residual.into_db()),
         SpecData::Percussive => o(state.hps.percussive.into_db()),
-        SpecData::PercussiveFiltered => o(state.power.p_filtered.into_db()),
+        SpecData::HarmonicFiltered => o(state.hps.h_filtered.into_db()),
+        SpecData::PercussiveFiltered => o(state.hps.p_filtered.into_db()),
     }
 }

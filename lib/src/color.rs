@@ -50,7 +50,7 @@ fn linear_to_srgb_clamped(value: f64) -> f64 {
 macro_rules! hue_fn {
     ($name:ident, $hue:expr) => {
         #[doc = concat!("Sets the hue to ", stringify!($name), " (", $hue, "°) in OKLCH color space.")]
-        pub fn $name(self) -> Self {
+        pub const fn $name(self) -> Self {
             Oklch { h: $hue, ..self }
         }
     };

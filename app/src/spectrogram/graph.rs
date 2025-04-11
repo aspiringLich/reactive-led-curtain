@@ -1,5 +1,5 @@
 use egui::{Align, Button, Frame, Layout, Slider, TopBottomPanel, Ui, Vec2, Window};
-use egui_plot::{Legend, Plot};
+use egui_plot::{Corner, Legend, Plot};
 use lib::{
     color::Oklch,
     state::{AnalysisState, light::LightData, loudness::LoudnessData, power::PowerData},
@@ -49,7 +49,24 @@ enum Tab {
     Light,
     Loudness,
     OctavePower,
+    Octave,
 }
+
+// for OctavePower and Octave
+const NOTES: [(Oklch, &str); 12] = [
+    (Oklch::LIGHT.red(), "A"),
+    (Oklch::LIGHT.orange(), "A#/Bb"),
+    (Oklch::LIGHT.yellow(), "B"),
+    (Oklch::LIGHT.lime(), "C"),
+    (Oklch::LIGHT.green(), "C#/Db"),
+    (Oklch::LIGHT.jade(), "D"),
+    (Oklch::LIGHT.cyan(), "D#/Eb"),
+    (Oklch::LIGHT.sky_blue(), "E"),
+    (Oklch::LIGHT.blue(), "F"),
+    (Oklch::LIGHT.indigo(), "F#/Gb"),
+    (Oklch::LIGHT.purple(), "G"),
+    (Oklch::LIGHT.magenta(), "G#/Ab"),
+];
 
 impl Graph {
     pub fn new(len: usize) -> Self {
@@ -91,6 +108,7 @@ impl Graph {
                     ui.checkbox(&mut state.legend, "Legend");
                 })
             });
+
             match state.tab {
                 Tab::Hrp => self
                     .default_plot("hrp", state.legend)
@@ -213,27 +231,27 @@ impl Graph {
                                 .color(Oklch::LIGHT.red()),
                         );
                     }),
-                Tab::OctavePower => self
+                Tab::OctavePower => {
+                    self.default_plot("octave_power", state.legend)
+                        .show(ui, |plot_ui| {
+                            for (i, (color, name)) in NOTES.iter().enumerate() {
+                                plot_ui.line(
+                                    self.pdata
+                                        .derive(|d| d.octave_power[i])
+                                        .line()
+                                        .name(name)
+                                        .color(color.to_owned()),
+                                )
+                            }
+                        })
+                }
+                Tab::Octave => self
                     .default_plot("octave", state.legend)
                     .show(ui, |plot_ui| {
-                        let notes = [
-                            (Oklch::LIGHT.red(), "A"),
-                            (Oklch::LIGHT.orange(), "A#/Bb"),
-                            (Oklch::LIGHT.yellow(), "B"),
-                            (Oklch::LIGHT.lime(), "C"),
-                            (Oklch::LIGHT.green(), "C#/Db"),
-                            (Oklch::LIGHT.jade(), "D"),
-                            (Oklch::LIGHT.cyan(), "D#/Eb"),
-                            (Oklch::LIGHT.sky_blue(), "E"),
-                            (Oklch::LIGHT.blue(), "F"),
-                            (Oklch::LIGHT.indigo(), "F#/Gb"),
-                            (Oklch::LIGHT.purple(), "G"),
-                            (Oklch::LIGHT.magenta(), "G#/Ab"),
-                        ];
-                        for (i, (color, name)) in notes.iter().enumerate() {
+                        for (i, (color, name)) in NOTES.iter().enumerate() {
                             plot_ui.line(
-                                self.pdata
-                                    .derive(|d| d.octave_power[i])
+                                self.ldata
+                                    .derive(|d| d.octave[i].average())
                                     .line()
                                     .name(name)
                                     .color(color.to_owned()),
@@ -275,7 +293,7 @@ impl Graph {
             .include_y(1.0)
             .set_margin_fraction(Vec2::new(0.0, 0.1));
         if legend {
-            plot.legend(Legend::default())
+            plot.legend(Legend::default().position(Corner::LeftTop))
         } else {
             plot
         }

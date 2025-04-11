@@ -22,6 +22,15 @@ struct PaintCtx<'a> {
     full_rect: Rect,
 }
 
+impl<'a> PaintCtx<'a> {
+    fn vrect(&self, x: f32) -> Rect {
+        let w = self.w;
+        let h = self.h;
+        let x = x * w;
+        Rect::from_ltrb(x, 0.0, x + 1.0, h).unwrap()
+    }
+}
+
 impl PaintData {
     pub fn blank(cfg: &AnalysisConfig) -> Self {
         Self {
@@ -82,6 +91,13 @@ impl PaintData {
         .unwrap();
         self.pix
             .fill_rect(ctx.full_rect, &paint, Transform::identity(), None);
+    }
+
+    fn harmonic_lines(&mut self, ctx: &mut PaintCtx) {
+        let padding = ((ctx.w - 12.0) / 2.0).round();
+
+        for i in 0..12 {
+        }
     }
 }
 
