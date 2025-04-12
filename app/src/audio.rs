@@ -167,6 +167,7 @@ pub fn ui(ui: &mut Ui, audio: &mut Audio, playback: &mut Playback) {
                 .as_mut()
                 .map(|d| d.try_seek(Duration::from_secs_f32(audio.progress)).unwrap());
             playback.dummy_sink.clear();
+            playback.playing_for = 0;
         }
     });
 }

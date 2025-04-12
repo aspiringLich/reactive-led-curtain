@@ -1,6 +1,6 @@
 use ecolor::Color32;
 use tiny_skia::{
-    Color, GradientStop, LinearGradient, Paint, Pixmap, Point, Rect, Shader, SpreadMode, Transform
+    Color, GradientStop, LinearGradient, Paint, Pixmap, Point, Rect, Shader, SpreadMode, Transform,
 };
 
 use crate::{cfg::AnalysisConfig, easing::EasingFunctions, util::profile_function};
@@ -95,12 +95,39 @@ impl PaintData {
 
     fn harmonic_lines<'a>(&mut self, ctx: &mut PaintCtx<'a>) {
         let mut paint = Paint::default();
-        let padding = ((ctx.w - 12.0) / 2.0).round();
+        let padding = ((ctx.w - 12.0) / 2.0) as usize;
 
         for i in 0..12 {
-            let o = ctx.easing.octave.ease_normalize(ctx.light.octave[i].average());
+            let o = ctx
+                .easing
+                .octave
+                .ease_normalize(ctx.light.octave[i].average());
             paint.shader = Shader::SolidColor(Color32::RED.gamma_multiply(o).into_color());
-            self.pix.fill_rect(ctx.vrect(padding + i as f32), &paint, Transform::identity(), None);
+            self.pix.fill_rect(
+                ctx.vrect((padding + i) as f32),
+                &paint,
+                Transform::identity(),
+                None,
+            );
+
+            //
+            let edge_factor = 0.5;
+            if i < padding {
+                paint.shader = Shader::SolidColor(
+                    Color32::RED
+                        .gamma_multiply(o * (padding - i) as f32 / padding as f32 * edge_factor)
+                        .into_color(),
+                );
+                self.pix.fill_rect(ctx.vrect((padding + 12 + i) as f32), &paint, Transform::identity(), None);
+            }
+            if i >= 12 - padding {
+                paint.shader = Shader::SolidColor(
+                    Color32::RED
+                        .gamma_multiply(o * (i + padding - 12) as f32 / padding as f32 * edge_factor)
+                        .into_color(),
+                );
+                self.pix.fill_rect(ctx.vrect((i + padding - 12) as f32), &paint, Transform::identity(), None);
+            }
         }
     }
 }
