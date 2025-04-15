@@ -134,6 +134,7 @@ pub fn ui(ui: &mut Ui, audio: &mut Audio, playback: &mut Playback) {
                     .try_seek(Duration::from_secs_f32(audio.progress))
                     .unwrap();
                 playback.dummy_sink.clear();
+                playback.playing_for = 0;
             }
 
             let time = |s: f32| format!("{}:{:02}", s as u32 / 60, s as u32 % 60);
