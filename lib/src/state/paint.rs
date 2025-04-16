@@ -83,8 +83,8 @@ impl PaintData {
         let p = ctx.light.percussive.average();
         let b = ctx.light.bass_percussive.average();
         let mut paint = Paint::default();
-        paint.set_color(Color32::WHITE.into_color());
-        const FACTOR: f32 = 0.3;
+
+        const FACTOR: f32 = 0.4;
         let ratio = p / (p + b + f32::EPSILON) * FACTOR * FACTOR;
         let mut pcol = Color::WHITE;
         pcol.apply_opacity(ctx.easing.percussive.ease_normalize(p) * (1.0 + ratio));
@@ -116,11 +116,12 @@ impl PaintData {
                 .easing
                 .octave
                 .ease_normalize(ctx.power.average_octave[i]);
-            paint.shader = Shader::SolidColor(
-                Color32::from_rgb(((2.0 - avg * 2.0).min(1.0) * 255.0) as u8, ((avg * 2.0).min(1.0) * 255.0) as u8,  0)
-                    .gamma_multiply(o)
-                    .into_color(),
+            let color = Color32::from_rgb(
+                ((2.0 - avg * 2.0).min(1.0) * 255.0) as u8,
+                ((avg * 2.0).min(1.0) * 255.0) as u8,
+                0,
             );
+            paint.shader = Shader::SolidColor(color.gamma_multiply(o).into_color());
             self.pix.fill_rect(
                 ctx.vrect((padding + i) as f32),
                 &paint,
@@ -132,7 +133,7 @@ impl PaintData {
             let edge_factor = 0.5;
             if i < padding {
                 paint.shader = Shader::SolidColor(
-                    Color32::RED
+                    color
                         .gamma_multiply(o * (padding - i) as f32 / padding as f32 * edge_factor)
                         .into_color(),
                 );
@@ -145,7 +146,7 @@ impl PaintData {
             }
             if i >= 12 - padding {
                 paint.shader = Shader::SolidColor(
-                    Color32::RED
+                    color
                         .gamma_multiply(
                             o * (i + padding - 12) as f32 / padding as f32 * edge_factor,
                         )

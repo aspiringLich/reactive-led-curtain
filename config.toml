@@ -12,8 +12,8 @@ sample_rate = 44100
 [hps]
 p_filter_span = 8
 h_filter_span = 30
-p_factor = 2.5
-h_factor = 1.399999976158142
+p_factor = 3.0
+h_factor = 1.2999999523162842
 
 [light]
 width = 20

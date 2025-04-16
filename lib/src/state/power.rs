@@ -74,7 +74,7 @@ impl PowerData {
         let mut f = A2;
         let mut after = A2 * factor;
 
-        const OCTAVES: usize = 4;
+        const OCTAVES: usize = 5;
         let octaves = OCTAVES as f32;
 
         for i in 0..12 * OCTAVES {
