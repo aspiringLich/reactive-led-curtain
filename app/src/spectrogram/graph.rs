@@ -49,7 +49,7 @@ enum Tab {
     Light,
     Loudness,
     OctavePower,
-    Octave,
+    Notes,
 }
 
 // for OctavePower and Octave
@@ -245,13 +245,13 @@ impl Graph {
                             }
                         })
                 }
-                Tab::Octave => self
-                    .default_plot("octave", state.legend)
+                Tab::Notes => self
+                    .default_plot("notes", state.legend)
                     .show(ui, |plot_ui| {
                         for (i, (color, name)) in NOTES.iter().enumerate() {
                             plot_ui.line(
                                 self.ldata
-                                    .derive(|d| d.octave[i].average())
+                                    .derive(|d| d.notes[i].average())
                                     .line()
                                     .name(name)
                                     .color(color.to_owned()),

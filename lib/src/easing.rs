@@ -8,6 +8,7 @@ use crate::color::Oklch;
 #[serde(default)]
 pub struct EasingFunctions {
     pub percussive: EasingFunction,
+    pub note: EasingFunction,
     pub octave: EasingFunction,
 }
 
@@ -21,6 +22,7 @@ pub struct EasingFunction {
     #[serde(skip)]
     pub last_x: Vec<f32>,
     #[serde(with="oklch")]
+    #[serde(default)]
     pub colors: Option<Vec<Oklch>>
 }
 

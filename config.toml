@@ -19,7 +19,7 @@ h_factor = 1.399999976158142
 width = 20
 height = 26
 decay = 0.8999999761581421
-gui_delay = 1
+gui_delay = 0
 
 [loudness]
 target_lufs = -10.0

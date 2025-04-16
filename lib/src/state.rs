@@ -7,7 +7,7 @@ use rustfft::num_complex::Complex;
 
 use crate::{
     cfg::AnalysisConfig,
-    easing::EasingFunction,
+    easing::{EasingFunction, EasingFunctions},
     unit::{Db, Power},
     util::{profile_function, vec_clone, vec_default},
 };
@@ -42,7 +42,7 @@ impl AnalysisState {
             paint: paint::PaintData::blank(cfg),
             easing: fs::read_to_string("easing.toml")
                 .ok()
-                .and_then(|s| toml::from_str(&s).ok())
+                .map(|s| toml::from_str(&s).unwrap())
                 .unwrap_or_default(),
         }
     }
@@ -56,7 +56,8 @@ impl AnalysisState {
         profile_function!();
 
         prev.buffer.drain(0..cfg.fft.hop_len);
-        prev.buffer.extend(cfg.loudness.normalize(hop_samples, ebur));
+        prev.buffer
+            .extend(cfg.loudness.normalize(hop_samples, ebur));
         let loudness = cfg.loudness.data(ebur);
 
         FieldsIterMut::new(&mut prev.easing)
@@ -64,8 +65,10 @@ impl AnalysisState {
             .for_each(|f| f.last_x.clear());
         let fft = fft::FftData::new(prev.fft.fft.clone(), cfg, prev.buffer.iter().cloned());
         let hps = prev.hps.advance(cfg, &fft);
+        let paint = prev
+            .paint
+            .advance(&mut prev.easing, &prev.light, &prev.power);
         let power = power::PowerData::new(cfg, &hps, prev.power);
-        let paint = prev.paint.advance(&mut prev.easing, &prev.light);
         let light = prev.light.advance(cfg, &power);
         Self {
             buffer: prev.buffer,

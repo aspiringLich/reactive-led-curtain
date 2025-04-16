@@ -6,10 +6,18 @@ p1 = [0.2172815352678299, 0.3534865379333496]
 p2 = [0.3090277910232544, 0.7182132005691528]
 colors = ["red", "green"]
 
-[octave]
+[note]
 min = 0.4000000059604645
 max = 6.119999885559082
 type = "cubic_bezier"
 p1 = [0.3928503394126892, 0.0]
 p2 = [0.13280189037322998, 1.0]
+colors = ["red", "orange", "yellow", "lime", "green", "jade", "sky_blue", "blue", "indigo", "purple", "grape"]
+
+[octave]
+min = 0.0
+max = 1.0
+type = "cubic_bezier"
+p1 = [0.332092821598053, 0.0]
+p2 = [0.6891592741012573, 1.0]
 colors = ["red", "orange", "yellow", "lime", "green", "jade", "sky_blue", "blue", "indigo", "purple", "grape"]

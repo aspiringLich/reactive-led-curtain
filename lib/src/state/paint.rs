@@ -5,7 +5,7 @@ use tiny_skia::{
 
 use crate::{cfg::AnalysisConfig, easing::EasingFunctions, util::profile_function};
 
-use super::light::LightData;
+use super::{light::LightData, power::PowerData};
 
 #[derive(Clone)]
 pub struct PaintData {
@@ -15,6 +15,7 @@ pub struct PaintData {
 struct PaintCtx<'a> {
     easing: &'a mut EasingFunctions,
     light: &'a LightData,
+    power: &'a PowerData,
     w: f32,
     h: f32,
     center_top: Point,
@@ -37,7 +38,12 @@ impl PaintData {
         }
     }
 
-    fn ctx<'a>(&self, easing: &'a mut EasingFunctions, light: &'a LightData) -> PaintCtx<'a> {
+    fn ctx<'a>(
+        &self,
+        easing: &'a mut EasingFunctions,
+        light: &'a LightData,
+        power: &'a PowerData,
+    ) -> PaintCtx<'a> {
         let w = self.pix.width() as f32;
         let h = self.pix.height() as f32;
         let center_top = Point::from_xy(w / 2.0, 0.0);
@@ -47,6 +53,7 @@ impl PaintData {
         PaintCtx {
             easing,
             light,
+            power,
             w,
             h,
             center_top,
@@ -55,9 +62,14 @@ impl PaintData {
         }
     }
 
-    pub fn advance(mut self, easing: &mut EasingFunctions, light: &LightData) -> Self {
+    pub fn advance(
+        mut self,
+        easing: &mut EasingFunctions,
+        light: &LightData,
+        power: &PowerData,
+    ) -> Self {
         profile_function!();
-        let mut ctx = self.ctx(easing, light);
+        let mut ctx = self.ctx(easing, light, power);
 
         self.pix.fill(Color32::BLACK.into_color());
 
@@ -98,11 +110,17 @@ impl PaintData {
         let padding = ((ctx.w - 12.0) / 2.0) as usize;
 
         for i in 0..12 {
-            let o = ctx
+            let o = ctx.easing.note.ease_normalize(ctx.light.notes[i].average());
+
+            let avg = ctx
                 .easing
                 .octave
-                .ease_normalize(ctx.light.octave[i].average());
-            paint.shader = Shader::SolidColor(Color32::RED.gamma_multiply(o).into_color());
+                .ease_normalize(ctx.power.average_octave[i]);
+            paint.shader = Shader::SolidColor(
+                Color32::from_rgb(((2.0 - avg * 2.0).min(1.0) * 255.0) as u8, ((avg * 2.0).min(1.0) * 255.0) as u8,  0)
+                    .gamma_multiply(o)
+                    .into_color(),
+            );
             self.pix.fill_rect(
                 ctx.vrect((padding + i) as f32),
                 &paint,
@@ -110,7 +128,7 @@ impl PaintData {
                 None,
             );
 
-            //
+            // ( ͡° ͜ʖ ͡°)
             let edge_factor = 0.5;
             if i < padding {
                 paint.shader = Shader::SolidColor(
@@ -118,15 +136,27 @@ impl PaintData {
                         .gamma_multiply(o * (padding - i) as f32 / padding as f32 * edge_factor)
                         .into_color(),
                 );
-                self.pix.fill_rect(ctx.vrect((padding + 12 + i) as f32), &paint, Transform::identity(), None);
+                self.pix.fill_rect(
+                    ctx.vrect((padding + 12 + i) as f32),
+                    &paint,
+                    Transform::identity(),
+                    None,
+                );
             }
             if i >= 12 - padding {
                 paint.shader = Shader::SolidColor(
                     Color32::RED
-                        .gamma_multiply(o * (i + padding - 12) as f32 / padding as f32 * edge_factor)
+                        .gamma_multiply(
+                            o * (i + padding - 12) as f32 / padding as f32 * edge_factor,
+                        )
                         .into_color(),
                 );
-                self.pix.fill_rect(ctx.vrect((i + padding - 12) as f32), &paint, Transform::identity(), None);
+                self.pix.fill_rect(
+                    ctx.vrect((i + padding - 12) as f32),
+                    &paint,
+                    Transform::identity(),
+                    None,
+                );
             }
         }
     }

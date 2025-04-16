@@ -1,6 +1,10 @@
 use std::ops::Sub;
 
-use crate::{cfg::AnalysisConfig, unit::Power, util::{profile_function, RollingAverage}};
+use crate::{
+    cfg::AnalysisConfig,
+    unit::Power,
+    util::{RollingAverage, profile_function},
+};
 
 use super::{AudibleSpec, hps::HpsData};
 
@@ -19,6 +23,7 @@ pub struct PowerData {
     pub ratio_h_p: RollingAverage,
 
     pub octave_power: [f32; 12],
+    pub average_octave: [f32; 12],
 }
 
 impl PowerData {
@@ -33,6 +38,7 @@ impl PowerData {
             p_bass_power: Default::default(),
             ratio_h_p: RollingAverage::new(5),
             octave_power: Default::default(),
+            average_octave: Default::default(),
         }
     }
 
@@ -62,22 +68,38 @@ impl PowerData {
         const A2: f64 = 110.0;
         let factor = 2.0f64.powf(1.0 / 12.0);
         let mut octave_power: [f32; 12] = Default::default();
+        let mut average_octave: [f32; 12] = Default::default();
 
         let mut before = A2 / factor;
         let mut f = A2;
         let mut after = A2 * factor;
 
-        for i in 0..48 {
+        const OCTAVES: usize = 4;
+        let octaves = OCTAVES as f32;
+
+        for i in 0..12 * OCTAVES {
             let start = cfg.hz_to_idx((before + f) as f32 / 2.0);
             let end = cfg.hz_to_idx((after + f) as f32 / 2.0);
             // dbg!(start, end);
 
-            let p = AudibleSpec(data.harmonic.iter().skip(start).take(end - start).cloned().collect()).power(cfg);
+            let p = AudibleSpec(
+                data.harmonic
+                    .iter()
+                    .skip(start)
+                    .take(end - start)
+                    .cloned()
+                    .collect(),
+            )
+            .power(cfg);
             octave_power[i % 12] += p;
+            average_octave[i % 12] += p * (1.0 / (octaves * 2.0) + (i / 12) as f32 / octaves);
 
             before = f;
             f = after;
             after *= factor;
+        }
+        for i in 0..12 {
+            average_octave[i] /= octave_power[i];
         }
 
         Self {
@@ -90,6 +112,7 @@ impl PowerData {
             // p_filtered,
             ratio_h_p,
             octave_power,
+            average_octave,
         }
     }
 }

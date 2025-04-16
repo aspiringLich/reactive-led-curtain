@@ -15,7 +15,7 @@ pub struct LightData {
     pub bp_raw: f32,
     pub percussive: RollingAverage,
     pub bass_percussive: RollingAverage,
-    pub octave: [RollingAverage; 12],
+    pub notes: [RollingAverage; 12],
 }
 
 impl LightData {
@@ -25,7 +25,7 @@ impl LightData {
             bp_raw: 0.0,
             percussive: RollingAverage::new(4),
             bass_percussive: RollingAverage::new(4),
-            octave: array::from_fn(|_| RollingAverage::new(4))
+            notes: array::from_fn(|_| RollingAverage::new(4))
         }
     }
 
@@ -35,7 +35,7 @@ impl LightData {
         spiked_d_smooth(&mut self.bp_raw, &power.p_bass_power, &cfg.light);
         self.percussive.consume((self.p_raw + 1.0).log2());
         self.bass_percussive.consume((self.bp_raw + 1.0).log2());
-        for (i, r) in self.octave.iter_mut().enumerate() {
+        for (i, r) in self.notes.iter_mut().enumerate() {
             r.consume((power.octave_power[i] * 10.0 + 1.0).log2());
         }
         self
