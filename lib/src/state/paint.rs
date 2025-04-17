@@ -1,14 +1,17 @@
+use std::iter;
+
 use ecolor::Color32;
 use tiny_skia::{
-    Color, GradientStop, LinearGradient, Paint, Pixmap, Point, Rect, Shader, SpreadMode, Transform,
+    Color, Paint, Pixmap, Point, Rect, Shader, SpreadMode, Transform,
 };
 
-use crate::{cfg::AnalysisConfig, easing::EasingFunctions, util::profile_function};
+use crate::{cfg::AnalysisConfig, color::Oklch, easing::EasingFunctions, util::profile_function};
 
 use super::{light::LightData, power::PowerData};
 
 #[derive(Clone)]
 pub struct PaintData {
+    pub colors: Vec<Color32>,
     pub pix: Pixmap,
 }
 
@@ -35,6 +38,10 @@ impl PaintData {
     pub fn blank(cfg: &AnalysisConfig) -> Self {
         Self {
             pix: Pixmap::new(cfg.light.width, cfg.light.height).unwrap(),
+            colors: Vec::from_iter(iter::repeat_n(
+                Color32::BLACK,
+                cfg.light.width as usize * cfg.light.height as usize,
+            )),
         }
     }
 
@@ -73,39 +80,55 @@ impl PaintData {
 
         self.pix.fill(Color32::BLACK.into_color());
 
-        self.percussive_background(&mut ctx);
-        self.harmonic_lines(&mut ctx);
+        let pback = self.percussive_background(&mut ctx);
+        // self.harmonic_lines(&mut ctx);
 
+        self.colors = pback.into_rgb();
         self
     }
 
-    fn percussive_background<'a>(&mut self, ctx: &mut PaintCtx<'a>) {
+    fn percussive_background<'a>(&mut self, ctx: &mut PaintCtx<'a>) -> Canvas {
         let p = ctx.light.percussive.average();
         let b = ctx.light.bass_percussive.average();
-        let mut paint = Paint::default();
+
+        let mut canvas = Canvas::new(ctx);
 
         const FACTOR: f32 = 0.4;
         let ratio = p / (p + b + f32::EPSILON) * FACTOR * FACTOR;
-        let mut pcol = Color::WHITE;
-        pcol.apply_opacity(ctx.easing.percussive.ease_normalize(p) * (1.0 + ratio));
-        // pcol.apply_opacity(easing.percussive.ease_normalize(p));
-        let mut bcol = Color::WHITE;
+        let palpha = ctx.easing.percussive.ease_normalize(p) * (1.0 + ratio);
         let ratio = p / (p + b + f32::EPSILON) * FACTOR;
-        bcol.apply_opacity(ctx.easing.percussive.ease_normalize(b) * (1.0 - ratio));
-        // bcol.apply_opacity(easing.percussive.ease_normalize(b));
-        paint.shader = LinearGradient::new(
-            ctx.center_top,
-            ctx.center_bottom,
-            vec![GradientStop::new(0.0, pcol), GradientStop::new(1.0, bcol)],
-            SpreadMode::Pad,
-            Transform::identity(),
-        )
-        .unwrap();
-        self.pix
-            .fill_rect(ctx.full_rect, &paint, Transform::identity(), None);
+        let balpha = ctx.easing.percussive.ease_normalize(b) * (1.0 - ratio);
+
+        let step = (balpha - palpha) / canvas.h as f32;
+        for i in 0..canvas.h {
+            canvas.row(i as usize).fill(Color32::WHITE.gamma_multiply(palpha + step * i as f32).into());
+        }
+
+        canvas
+
+
+        // let mut pcol = Color::WHITE;
+        // pcol.apply_opacity(ctx.easing.percussive.ease_normalize(p) * (1.0 + ratio));
+        // // pcol.apply_opacity(easing.percussive.ease_normalize(p));
+        // let mut bcol = Color::WHITE;
+        // let ratio = p / (p + b + f32::EPSILON) * FACTOR;
+        // bcol.apply_opacity(ctx.easing.percussive.ease_normalize(b) * (1.0 - ratio));
+        // // bcol.apply_opacity(easing.percussive.ease_normalize(b));
+        // paint.shader = LinearGradient::new(
+        //     ctx.center_top,
+        //     ctx.center_bottom,
+        //     vec![GradientStop::new(0.0, pcol), GradientStop::new(1.0, bcol)],
+        //     SpreadMode::Pad,
+        //     Transform::identity(),
+        // )
+        // .unwrap();
+        // self.pix
+        //     .fill_rect(ctx.full_rect, &paint, Transform::identity(), None);
+
+        // todo!()
     }
 
-    fn harmonic_lines<'a>(&mut self, ctx: &mut PaintCtx<'a>) {
+    fn harmonic_lines<'a>(&mut self, ctx: &mut PaintCtx<'a>) -> Canvas {
         let mut paint = Paint::default();
         let padding = ((ctx.w - 12.0) / 2.0) as usize;
 
@@ -160,6 +183,8 @@ impl PaintData {
                 );
             }
         }
+
+        todo!()
     }
 }
 
@@ -170,5 +195,47 @@ trait Methods {
 impl Methods for Color32 {
     fn into_color(&self) -> Color {
         Color::from_rgba8(self.r(), self.g(), self.b(), self.a())
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct Canvas {
+    data: Vec<Oklch>,
+    w: u32,
+    h: u32,
+}
+
+impl Canvas {
+    pub fn new(ctx: &PaintCtx) -> Self {
+        let w = ctx.w;
+        let h = ctx.h;
+        let data = Vec::from_iter(iter::repeat_n(Oklch::TRANSPARENT, w as usize * h as usize));
+        Self { data, w: w as u32, h: h as u32 }
+    }
+
+    pub fn row(&mut self, r: usize) -> &mut [Oklch] {
+        let start = r * self.w as usize;
+        let end = start + self.w as usize;
+        &mut self.data[start..end]
+    }
+
+    pub fn overlay(&mut self, other: &Self) {
+        for i in 0..self.data.len() {
+            self.data[i] = self.data[i].overlay(&other.data[i]);
+        }
+    }
+
+    pub fn into_rgb(self) -> Vec<Color32> {
+        self.data
+            .into_iter()
+            .map(|c| {
+                let c: Color32 = c.into();
+                Color32::from_rgb(
+                    (c.r() as f32 * c.a() as f32 / 256.0) as u8,
+                    (c.g() as f32 * c.a() as f32 / 256.0) as u8,
+                    (c.b() as f32 * c.a() as f32 / 256.0) as u8,
+                )
+            })
+            .collect()
     }
 }

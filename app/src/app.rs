@@ -66,8 +66,6 @@ impl eframe::App for AppState {
             puffin::set_scopes_on(true);
             puffin::GlobalProfiler::lock().new_frame();
             puffin::profile_function!();
-        } else {
-            puffin::set_scopes_on(false);
         }
 
         egui::SidePanel::left("Configuration").show(ctx, |ui| {

@@ -24,15 +24,11 @@ impl Light {
         puffin::profile_function!();
         let img = ColorImage {
             size: [cfg.width as usize, cfg.height as usize],
-            pixels: paint
-                .pix
-                .pixels()
-                .iter()
-                .map(|c| Color32::from_rgba_premultiplied(c.red(), c.green(), c.blue(), c.alpha()))
-                .collect(),
+            pixels: paint.colors.clone(),
         };
-        self.tex.set(self.delay_buf.pop_front().unwrap(), TextureOptions::NEAREST);
         self.delay_buf.push_back(img);
+        self.tex
+            .set(self.delay_buf.pop_front().unwrap(), TextureOptions::NEAREST);
         ui.add(
             Image::new(&self.tex)
                 .maintain_aspect_ratio(true)
