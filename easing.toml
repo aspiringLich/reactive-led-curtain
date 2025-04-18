@@ -15,9 +15,9 @@ p2 = [0.13280189037322998, 1.0]
 colors = ["red", "orange", "yellow", "lime", "green", "jade", "sky_blue", "blue", "indigo", "purple", "grape"]
 
 [octave]
-min = 0.0
-max = 1.0
+min = 0.20000000298023224
+max = 0.800000011920929
 type = "cubic_bezier"
-p1 = [0.332092821598053, 0.0]
-p2 = [0.6891592741012573, 1.0]
+p1 = [0.9167878031730652, 0.1008525937795639]
+p2 = [0.2747132480144501, 0.9554761052131653]
 colors = ["red", "orange", "yellow", "lime", "green", "jade", "sky_blue", "blue", "indigo", "purple", "grape"]

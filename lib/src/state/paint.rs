@@ -1,11 +1,14 @@
 use std::iter;
 
 use ecolor::Color32;
-use tiny_skia::{
-    Color, Paint, Pixmap, Point, Rect, Shader, SpreadMode, Transform,
-};
+use tiny_skia::{Color, Paint, Pixmap, Point, Rect, Shader, SpreadMode, Transform};
 
-use crate::{cfg::AnalysisConfig, color::Oklch, easing::EasingFunctions, util::profile_function};
+use crate::{
+    cfg::AnalysisConfig,
+    color::{Oklch, OklchGradient, OklchGradientStop},
+    easing::EasingFunctions,
+    util::profile_function,
+};
 
 use super::{light::LightData, power::PowerData};
 
@@ -80,10 +83,10 @@ impl PaintData {
 
         self.pix.fill(Color32::BLACK.into_color());
 
-        let pback = self.percussive_background(&mut ctx);
-        // self.harmonic_lines(&mut ctx);
+        let mut canvas = self.percussive_background(&mut ctx);
+        self.harmonic_lines(&mut ctx, &mut canvas);
 
-        self.colors = pback.into_rgb();
+        self.colors = canvas.into_rgb();
         self
     }
 
@@ -100,91 +103,48 @@ impl PaintData {
         let balpha = ctx.easing.percussive.ease_normalize(b) * (1.0 - ratio);
 
         let step = (balpha - palpha) / canvas.h as f32;
-        for i in 0..canvas.h {
-            canvas.row(i as usize).fill(Color32::WHITE.gamma_multiply(palpha + step * i as f32).into());
+        for (i, row) in canvas.iter_rows().enumerate() {
+            row.fill(
+                Color32::WHITE
+                    .gamma_multiply(palpha + step * i as f32)
+                    .into(),
+            );
         }
 
         canvas
-
-
-        // let mut pcol = Color::WHITE;
-        // pcol.apply_opacity(ctx.easing.percussive.ease_normalize(p) * (1.0 + ratio));
-        // // pcol.apply_opacity(easing.percussive.ease_normalize(p));
-        // let mut bcol = Color::WHITE;
-        // let ratio = p / (p + b + f32::EPSILON) * FACTOR;
-        // bcol.apply_opacity(ctx.easing.percussive.ease_normalize(b) * (1.0 - ratio));
-        // // bcol.apply_opacity(easing.percussive.ease_normalize(b));
-        // paint.shader = LinearGradient::new(
-        //     ctx.center_top,
-        //     ctx.center_bottom,
-        //     vec![GradientStop::new(0.0, pcol), GradientStop::new(1.0, bcol)],
-        //     SpreadMode::Pad,
-        //     Transform::identity(),
-        // )
-        // .unwrap();
-        // self.pix
-        //     .fill_rect(ctx.full_rect, &paint, Transform::identity(), None);
-
-        // todo!()
     }
 
-    fn harmonic_lines<'a>(&mut self, ctx: &mut PaintCtx<'a>) -> Canvas {
-        let mut paint = Paint::default();
+    fn harmonic_lines<'a>(&mut self, ctx: &mut PaintCtx<'a>, canvas: &mut Canvas) {
+        // let mut paint = Paint::default();
         let padding = ((ctx.w - 12.0) / 2.0) as usize;
+        let grad = OklchGradient::new_hex(["#f65b53", "#8acf77"].into_iter());
 
-        for i in 0..12 {
-            let o = ctx.easing.note.ease_normalize(ctx.light.notes[i].average());
+        for (i, row) in canvas.iter_rows().enumerate() {
+            for j in 0..12 {
+                let o = ctx.easing.note.ease_normalize(ctx.light.notes[j].average());
+                let avg = ctx
+                    .easing
+                    .octave
+                    .ease_normalize(ctx.power.average_octave[j]);
+                let color = grad.color(avg).unwrap();
+                row[j + padding] = row[j + padding].lerp(&color, o);
 
-            let avg = ctx
-                .easing
-                .octave
-                .ease_normalize(ctx.power.average_octave[i]);
-            let color = Color32::from_rgb(
-                ((2.0 - avg * 2.0).min(1.0) * 255.0) as u8,
-                ((avg * 2.0).min(1.0) * 255.0) as u8,
-                0,
-            );
-            paint.shader = Shader::SolidColor(color.gamma_multiply(o).into_color());
-            self.pix.fill_rect(
-                ctx.vrect((padding + i) as f32),
-                &paint,
-                Transform::identity(),
-                None,
-            );
-
-            // ( ͡° ͜ʖ ͡°)
-            let edge_factor = 0.5;
-            if i < padding {
-                paint.shader = Shader::SolidColor(
-                    color
-                        .gamma_multiply(o * (padding - i) as f32 / padding as f32 * edge_factor)
-                        .into_color(),
-                );
-                self.pix.fill_rect(
-                    ctx.vrect((padding + 12 + i) as f32),
-                    &paint,
-                    Transform::identity(),
-                    None,
-                );
-            }
-            if i >= 12 - padding {
-                paint.shader = Shader::SolidColor(
-                    color
-                        .gamma_multiply(
-                            o * (i + padding - 12) as f32 / padding as f32 * edge_factor,
-                        )
-                        .into_color(),
-                );
-                self.pix.fill_rect(
-                    ctx.vrect((i + padding - 12) as f32),
-                    &paint,
-                    Transform::identity(),
-                    None,
-                );
+                // ( ͡° ͜ʖ ͡°)
+                let edge_factor = 0.5;
+                if j < padding {
+                    row[padding + 12 + j] = row[padding + 12 + j].lerp(
+                        &color,
+                        o * (padding - j) as f32 / padding as f32 * edge_factor,
+                    );
+                }
+                if j >= 12 - padding {
+                    row[j + padding - 12] = row[j + padding - 12].lerp(
+                        &color,
+                        o * (j + padding - 12) as f32 / padding as f32 * edge_factor,
+                    );
+                }
             }
         }
-
-        todo!()
     }
 }
 
@@ -206,11 +166,15 @@ pub struct Canvas {
 }
 
 impl Canvas {
-    pub fn new(ctx: &PaintCtx) -> Self {
+    fn new<'a>(ctx: &PaintCtx<'a>) -> Self {
         let w = ctx.w;
         let h = ctx.h;
         let data = Vec::from_iter(iter::repeat_n(Oklch::TRANSPARENT, w as usize * h as usize));
-        Self { data, w: w as u32, h: h as u32 }
+        Self {
+            data,
+            w: w as u32,
+            h: h as u32,
+        }
     }
 
     pub fn row(&mut self, r: usize) -> &mut [Oklch] {
@@ -237,5 +201,9 @@ impl Canvas {
                 )
             })
             .collect()
+    }
+
+    pub fn iter_rows(&mut self) -> impl ExactSizeIterator<Item = &mut [Oklch]> {
+        self.data.chunks_mut(self.w as usize)
     }
 }

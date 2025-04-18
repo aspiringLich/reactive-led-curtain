@@ -136,10 +136,15 @@ impl Oklch {
 
     pub fn lerp(&self, other: &Self, ratio: f32) -> Self {
         let ratiop = 1.0 - ratio;
+
+        let delta_h = (other.h - self.h + 360.0) % 360.0;
+        let shortest_delta_h = if delta_h > 180.0 { delta_h - 360.0 } else { delta_h };
+        let interpolated_h = (self.h + shortest_delta_h * ratio + 360.0) % 360.0;
+
         Self {
             l: self.l * ratiop + other.l * ratio,
             c: self.c * ratiop + other.c * ratio,
-            h: self.h * ratiop + other.h * ratio,
+            h: interpolated_h,
             a: self.a * ratiop + other.a * ratio,
         }
     }
@@ -234,6 +239,23 @@ where
 impl OklchGradient {
     pub fn new(stops: Vec<OklchGradientStop>) -> Option<Self> {
         Some(Self { stops })
+    }
+
+    pub fn new_simple(colors: impl ExactSizeIterator<Item = Color32>) -> Self {
+        let len = colors.len();
+        let stops = colors
+            .into_iter()
+            .enumerate()
+            .map(|(i, color)| OklchGradientStop {
+                color: color.into(),
+                position: i as f32 / (len - 1) as f32,
+            })
+            .collect();
+        Self { stops }
+    }
+
+    pub fn new_hex(hex: impl ExactSizeIterator<Item = &str>) -> Self {
+        Self::new_simple(hex.map(|hex| Color32::from_hex(hex).unwrap()))
     }
 
     pub fn color(&self, position: f32) -> Option<Oklch> {
