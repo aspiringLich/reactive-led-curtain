@@ -8,6 +8,7 @@ use crate::color::Oklch;
 #[serde(default)]
 pub struct EasingFunctions {
     pub percussive: EasingFunction,
+    pub bass: EasingFunction,
     pub note: EasingFunction,
     pub octave: EasingFunction,
 }

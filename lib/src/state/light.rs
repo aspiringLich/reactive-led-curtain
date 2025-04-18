@@ -43,7 +43,7 @@ impl LightData {
 }
 
 fn spiked_d_smooth(l: &mut f32, d: &DData<f32>, cfg: &LightConfig) {
-    let mut dval = if d.dval > 0.0 { d.dval } else { d.dval * 0.2 };
+    let mut dval = if d.dval > 0.0 { d.dval } else { d.dval * 0.5 };
     if *l < 3.0 && dval < 0.0 {
         dval *= *l / 3.0;
     }

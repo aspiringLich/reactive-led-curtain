@@ -100,7 +100,7 @@ impl PaintData {
         let ratio = p / (p + b + f32::EPSILON) * FACTOR * FACTOR;
         let palpha = ctx.easing.percussive.ease_normalize(p) * (1.0 + ratio);
         let ratio = p / (p + b + f32::EPSILON) * FACTOR;
-        let balpha = ctx.easing.percussive.ease_normalize(b) * (1.0 - ratio);
+        let balpha = ctx.easing.bass.ease_normalize(b) * (1.0 - ratio);
 
         let step = (balpha - palpha) / canvas.h as f32;
         for (i, row) in canvas.iter_rows().enumerate() {
@@ -117,11 +117,11 @@ impl PaintData {
     fn harmonic_lines<'a>(&mut self, ctx: &mut PaintCtx<'a>, canvas: &mut Canvas) {
         // let mut paint = Paint::default();
         let padding = ((ctx.w - 12.0) / 2.0) as usize;
-        let grad = OklchGradient::new_hex(["#f65b53", "#8acf77"].into_iter());
+        let grad = OklchGradient::new_hex(["#ff0d17", "#ecaf3b", "#6cd74a"].into_iter());
 
         for (i, row) in canvas.iter_rows().enumerate() {
             for j in 0..12 {
-                let o = ctx.easing.note.ease_normalize(ctx.light.notes[j].average());
+                let o = ctx.easing.note.ease_normalize(ctx.light.notes[j].average()) * 0.9;
                 let avg = ctx
                     .easing
                     .octave
