@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::state::{fft, hps, light, loudness};
+use crate::state::{fft, hps, light, loudness, paint};
 
 #[derive(Deserialize, Serialize, Default)]
 #[serde(default)]
@@ -9,6 +9,7 @@ pub struct AnalysisConfig {
     pub fft: fft::FftConfig,
     pub hps: hps::HpsConfig,
     pub light: light::LightConfig,
+    pub paint: paint::PaintConfig,
     pub loudness: loudness::LoudnessConfig,
 }
 

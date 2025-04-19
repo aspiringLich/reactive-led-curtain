@@ -1,6 +1,7 @@
 use std::iter;
 
 use ecolor::Color32;
+use serde::{Deserialize, Serialize};
 use tiny_skia::{Color, Pixmap};
 
 use crate::{
@@ -22,10 +23,12 @@ pub struct PaintData {
 #[derive(Clone, Copy, Default)]
 pub struct HarmonicPixel {
     pub color: f32,
-    pub intensity: f32,
+    pub power: f32,
+    pub factor: f32,
 }
 
 struct PaintCtx<'a> {
+    cfg: &'a PaintConfig,
     easing: &'a mut EasingFunctions,
     light: &'a LightData,
     power: &'a PowerData,
@@ -41,12 +44,17 @@ impl PaintData {
                 Color32::BLACK,
                 cfg.light.width as usize * cfg.light.height as usize,
             )),
-            harmonic: Canvas::new(cfg, HarmonicPixel::default()),
+            harmonic: Canvas::new_with_size(
+                cfg.light.width,
+                cfg.paint.roll_len.len() as u32,
+                HarmonicPixel::default(),
+            ),
         }
     }
 
     fn ctx<'a>(
         &self,
+        cfg: &'a PaintConfig,
         easing: &'a mut EasingFunctions,
         light: &'a LightData,
         power: &'a PowerData,
@@ -55,6 +63,7 @@ impl PaintData {
         let h = self.pix.height() as f32;
 
         PaintCtx {
+            cfg,
             easing,
             light,
             power,
@@ -65,12 +74,13 @@ impl PaintData {
 
     pub fn advance(
         mut self,
+        cfg: &PaintConfig,
         easing: &mut EasingFunctions,
         light: &LightData,
         power: &PowerData,
     ) -> Self {
         profile_function!();
-        let mut ctx = self.ctx(easing, light, power);
+        let mut ctx = self.ctx(cfg, easing, light, power);
 
         self.pix.fill(Color32::BLACK.into_color());
 
@@ -112,43 +122,54 @@ impl PaintData {
 
         self.harmonic.rotate_down();
         for j in 0..12 {
-            let intensity = ctx.easing.note.ease_normalize(ctx.light.notes[j].average()) * 0.9;
+            let power = ctx.light.notes[j].average();
             let color = ctx
                 .easing
                 .octave
                 .ease_normalize(ctx.power.average_octave[j]);
             // let color = grad.color(avg).unwrap();
             // row[j + padding] = row[j + padding].lerp(&color, o);
-            self.harmonic.row(0)[j + padding] = HarmonicPixel { color, intensity };
+            self.harmonic.row(0)[j + padding] = HarmonicPixel {
+                color,
+                power,
+                factor: 1.0,
+            };
 
             // ( ͡° ͜ʖ ͡°)
             let edge_factor = 0.5;
             if j < padding {
                 self.harmonic.row(0)[padding + 12 + j] = HarmonicPixel {
                     color,
-                    intensity: intensity * (padding - j) as f32 / padding as f32 * edge_factor,
+                    power,
+                    factor: (padding - j) as f32 / padding as f32 * edge_factor,
                 }
             }
             if j >= 12 - padding {
                 self.harmonic.row(0)[padding + j - 12] = HarmonicPixel {
                     color,
-                    intensity: intensity * (j + padding - 12) as f32 / padding as f32 * edge_factor,
+                    power,
+                    factor: (j + padding - 12) as f32 / padding as f32 * edge_factor,
                 }
             }
         }
 
-        for (rowh, rowc) in iter::repeat_n(self.harmonic.row_immut(0), 12)
-            .chain(iter::repeat_n(self.harmonic.row_immut(1), 5))
-            .chain(iter::repeat_n(self.harmonic.row_immut(2), 3))
-            .chain(iter::repeat_n(self.harmonic.row_immut(3), 2))
-            .chain(iter::repeat_n(self.harmonic.row_immut(4), 2))
-            .chain(iter::repeat_n(self.harmonic.row_immut(5), 1))
-            .chain(iter::repeat_n(self.harmonic.row_immut(6), 1))
-            .chain(iter::repeat_n(self.harmonic.row_immut(7), 1))
-            .zip(canvas.iter_rows())
+        let mut i = 0;
+        for ((&len, &opacity), rowh) in ctx
+            .cfg
+            .roll_len
+            .iter()
+            .zip(ctx.cfg.roll_opacity.iter())
+            .zip(self.harmonic.iter_rows())
         {
-            for (pixelh, pixelc) in rowh.iter().zip(rowc.iter_mut()) {
-                *pixelc = pixelc.lerp(&grad.color(pixelh.color).unwrap(), pixelh.intensity)
+            for _ in 0..len {
+                for (pixelh, pixelc) in rowh.iter().zip(canvas.row(i).iter_mut()) {
+                    let x = ctx.easing.note.ease_normalize(pixelh.power * opacity) * pixelh.factor * 0.9;
+                    *pixelc = pixelc.lerp(
+                        &grad.color(pixelh.color).unwrap(),
+                        x,
+                    );
+                }
+                i += 1;
             }
         }
 
@@ -232,6 +253,14 @@ impl<T> Canvas<T> {
         Self { data, w, h }
     }
 
+    fn new_with_size(w: u32, h: u32, default: T) -> Self
+    where
+        T: Clone,
+    {
+        let data = Vec::from_iter(iter::repeat_n(default, w as usize * h as usize));
+        Self { data, w, h }
+    }
+
     pub fn row(&mut self, r: usize) -> &mut [T] {
         let start = r * self.w as usize;
         let end = start + self.w as usize;
@@ -272,5 +301,21 @@ impl Canvas<Oklch> {
                 )
             })
             .collect()
+    }
+}
+
+#[derive(Deserialize, Serialize)]
+#[serde(default)]
+pub struct PaintConfig {
+    pub roll_len: Vec<u32>,
+    pub roll_opacity: Vec<f32>,
+}
+
+impl Default for PaintConfig {
+    fn default() -> Self {
+        Self {
+            roll_len: vec![12, 5, 3, 2, 2, 1, 1],
+            roll_opacity: vec![1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4],
+        }
     }
 }

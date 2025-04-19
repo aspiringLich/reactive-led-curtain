@@ -67,7 +67,7 @@ impl AnalysisState {
         let hps = prev.hps.advance(cfg, &fft);
         let paint = prev
             .paint
-            .advance(&mut prev.easing, &prev.light, &prev.power);
+            .advance(&cfg.paint, &mut prev.easing, &prev.light, &prev.power);
         let power = power::PowerData::new(cfg, &hps, prev.power);
         let light = prev.light.advance(cfg, &power);
         Self {

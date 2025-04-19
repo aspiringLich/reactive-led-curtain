@@ -21,6 +21,11 @@ height = 26
 decay = 0.8999999761581421
 gui_delay = 0
 
+[paint]
+roll_len = [12, 5, 3, 2, 2, 1, 1]
+roll_opacity = [1.0, 1.0, 0.92, 0.84, 0.76, 0.68, 0.6]
+# roll_opacity = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+
 [loudness]
 target_lufs = -10.0
 factor = 0.8
