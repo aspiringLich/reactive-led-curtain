@@ -27,6 +27,17 @@ pub struct HarmonicPixel {
     pub factor: f32,
 }
 
+impl HarmonicPixel {
+    pub fn lerp(&self, other: &Self, t: f32) -> Self {
+        let tp = 1.0 - t;
+        Self {
+            color: self.color * tp + other.color * t,
+            power: self.power * tp + other.power * t,
+            factor: self.factor * tp + other.factor * t,
+        }
+    }
+}
+
 struct PaintCtx<'a> {
     cfg: &'a PaintConfig,
     easing: &'a mut EasingFunctions,
@@ -107,7 +118,7 @@ impl PaintData {
         for (i, row) in canvas.iter_rows().enumerate() {
             row.fill(
                 Color32::WHITE
-                    .gamma_multiply(palpha + step * i as f32)
+                    .gamma_multiply((palpha + step * i as f32) * 0.8)
                     .into(),
             );
         }
@@ -154,15 +165,29 @@ impl PaintData {
         }
 
         let mut i = 0;
+        let mut previous: Option<(&[HarmonicPixel], f32)> = None;
         for ((&len, &opacity), rowh) in ctx
             .cfg
             .roll_len
             .iter()
-            .zip(ctx.cfg.roll_opacity.iter())
+            .zip(ctx.cfg.roll_opacity.iter().chain(iter::repeat(&1.0)))
             .zip(self.harmonic.iter_rows())
         {
-            for _ in 0..len {
-                for (pixelh, pixelc) in rowh.iter().zip(canvas.row(i).iter_mut()) {
+            for j in 0..len {
+                for k in 0..rowh.len() {
+                    let pixelh = &rowh[k];
+                    let pixelc = &mut canvas.row(i)[k];
+
+                    let (pixelh, opacity) = if let Some((p_rowh, p_opacity)) = previous && len != 1 {
+                        let t = j as f32 / len as f32;
+                        (
+                            &pixelh.lerp(&p_rowh[k], 1.0 - t),
+                            opacity * t + p_opacity * (1.0 -t),
+                        )
+                    } else {
+                        (pixelh, opacity)
+                    };
+
                     let x = ctx.easing.note.ease_normalize(pixelh.power * opacity) * pixelh.factor * 0.9;
                     *pixelc = pixelc.lerp(
                         &grad.color(pixelh.color).unwrap(),
@@ -171,6 +196,7 @@ impl PaintData {
                 }
                 i += 1;
             }
+            previous = Some((&*rowh, opacity));
         }
 
         // for (i, row) in canvas.iter_rows().enumerate() {
