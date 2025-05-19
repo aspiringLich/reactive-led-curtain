@@ -75,7 +75,7 @@ impl eframe::App for AppState {
                 ui.with_layout(Layout::default(), |ui| {
                     ScrollArea::vertical().show(ui, |ui| {
                         CollapsingHeader::new("Audio").show(ui, |ui| {
-                            audio::ui(ui, &mut self.persistent.audio, &mut self.playback);
+                            audio::ui(ui, &mut self.persistent.audio, &mut self.playback, &mut self.cfg.loudness);
                             audio::playback(
                                 &self.cfg,
                                 &mut self.persistent.audio,

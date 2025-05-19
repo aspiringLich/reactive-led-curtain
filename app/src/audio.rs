@@ -12,9 +12,7 @@ use std::{
 
 use egui::{Button, Checkbox, ComboBox, Key, Modifiers, Slider, TextEdit, Ui, mutex::Mutex};
 use lib::{
-    Complex,
-    cfg::AnalysisConfig,
-    state::{AnalysisState, RawSpec, fft},
+    cfg::AnalysisConfig, state::{fft, loudness::LoudnessConfig, AnalysisState, RawSpec}, Complex
 };
 use puffin_egui::puffin;
 use rodio::{
@@ -67,7 +65,7 @@ fn read_dir(dir: &Path) -> io::Result<Vec<String>> {
     Ok(out)
 }
 
-pub fn ui(ui: &mut Ui, audio: &mut Audio, playback: &mut Playback) {
+pub fn ui(ui: &mut Ui, audio: &mut Audio, playback: &mut Playback, cfg: &mut LoudnessConfig) {
     puffin::profile_function!();
     ui.input(|state| {
         if state.key_pressed(Key::Space) {
@@ -171,6 +169,8 @@ pub fn ui(ui: &mut Ui, audio: &mut Audio, playback: &mut Playback) {
             playback.playing_for = 0;
         }
     });
+
+    ui.checkbox(&mut cfg.normalize, "Normalize");
 }
 
 pub struct Playback {

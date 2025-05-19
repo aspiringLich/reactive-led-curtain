@@ -15,6 +15,7 @@ pub struct LoudnessData {
 pub struct LoudnessConfig {
     pub target_lufs: f64,
     pub factor: f64,
+    pub normalize: bool,
 }
 
 impl LoudnessConfig {
@@ -27,8 +28,12 @@ impl LoudnessConfig {
         &self,
         samples: impl ExactSizeIterator<Item = i16>,
         ebur: &mut EbuR128,
-    ) -> impl ExactSizeIterator<Item = i16> {
+    ) -> Vec<i16> {
         profile_function!();
+
+        if !self.normalize {
+            return samples.collect();
+        }
 
         let samples = samples.collect::<Vec<_>>();
         ebur.add_frames_i16(&samples).unwrap();
@@ -37,6 +42,7 @@ impl LoudnessConfig {
         samples
             .into_iter()
             .map(move |s| (s as f64 * self.gain(loudness)).clamp(0.0, i16::MAX as f64) as i16)
+            .collect()
     }
 
     pub fn data(&self, ebur: &EbuR128) -> LoudnessData {
@@ -54,6 +60,7 @@ impl Default for LoudnessConfig {
         Self {
             target_lufs: -20.0,
             factor: 0.4,
+            normalize: true,
         }
     }
 }
