@@ -28,7 +28,7 @@ fn main() -> eframe::Result {
         ..Default::default()
     };
     eframe::run_native(
-        "led_reactive_curtain",
+        "led_reactive_matrix",
         native_options,
         Box::new(|cc| Ok(Box::new(AppState::new(cc)))),
     )

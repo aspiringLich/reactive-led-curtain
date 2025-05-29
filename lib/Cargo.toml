@@ -25,3 +25,11 @@ paste = "1.0.15"
 
 [features]
 profiling = ["puffin_egui"]
+
+[dev-dependencies]
+criterion = { version = "0.6", features = ["html_reports"] }
+rand = "0.9"
+
+[[bench]]
+name = "analysis"
+harness = false
