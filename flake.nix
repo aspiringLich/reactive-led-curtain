@@ -30,6 +30,7 @@
             libxkbcommon
             fontconfig
             libGL
+            libudev-zero
             (rust-bin.selectLatestNightlyWith (toolchain: toolchain.default))
 
             (python3.withPackages (python-pkgs: with python-pkgs; [
