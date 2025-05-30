@@ -308,8 +308,14 @@ impl Spectrogram {
 pub fn ui(ui: &mut Ui, state: &mut AppState) {
     puffin::profile_function!();
     let spec = &mut state.spectrogram;
-
+    
+    let mut max_iter = 4;
     while let Ok(samples) = spec.sample_rx.try_recv() {
+        max_iter -= 1;
+        if max_iter < 0 {
+            break;
+        }
+        
         let hop_len = state.cfg.fft.hop_len;
         assert_eq!(samples.len(), hop_len);
 

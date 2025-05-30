@@ -108,6 +108,8 @@ void loop() {
     // debug: is COBS working?
     else if (dec_len = 8 && decoded[0] == 111) {
       digitalWrite(LED_BUILTIN, HIGH);
+      // echo it back
+      Serial.write(decoded, dec_len);
     }
     // debug: test RGB LED
     else if (dec_len = 3) {
