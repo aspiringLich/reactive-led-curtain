@@ -108,7 +108,7 @@ impl PaintData {
 
         let mut canvas = Canvas::new(ctx, Oklch::TRANSPARENT);
 
-        const FACTOR: f32 = 0.4;
+        const FACTOR: f32 = 0.2;
         let ratio = p / (p + b + f32::EPSILON) * FACTOR * FACTOR;
         let palpha = ctx.easing.percussive.ease_normalize(p) * (1.0 + ratio);
         let ratio = p / (p + b + f32::EPSILON) * FACTOR;
@@ -117,8 +117,8 @@ impl PaintData {
         let step = (balpha - palpha) / canvas.h as f32;
         for (i, row) in canvas.iter_rows().enumerate() {
             row.fill(
-                Color32::WHITE
-                    .gamma_multiply((palpha + step * i as f32) * 0.8)
+                Color32::from_hex("#ffffff").unwrap()
+                    .gamma_multiply((palpha + step * i as f32) * 0.4)
                     .into(),
             );
         }

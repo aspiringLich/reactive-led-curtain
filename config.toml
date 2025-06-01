@@ -19,7 +19,7 @@ h_factor = 1.2999999523162842
 width = 20
 height = 26
 decay = 0.8999999761581421
-gui_delay = 0
+gui_delay = 2
 
 [paint]
 roll_len = [5, 5, 5, 4, 4, 3]

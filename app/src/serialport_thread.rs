@@ -1,5 +1,5 @@
 use std::sync::Arc;
-use std::thread::{self, JoinHandle};
+use std::thread::{self, JoinHandle, sleep};
 use std::time::Duration;
 
 use egui::{ColorImage, mutex::Mutex};
@@ -33,6 +33,8 @@ impl SerialPortThread {
                 }
             };
 
+            sleep(Duration::from_millis(1000));
+
             // Main thread loop
             loop {
                 // Acquire lock on the shared image
@@ -60,8 +62,29 @@ impl SerialPortThread {
                     // Write to the serial port
                     if let Err(e) = port.write_all(&encoded) {
                         log::error!("Failed to write to serial port: {}", e);
+                        sleep(Duration::from_millis(100));
                     }
                 }
+                
+                // Read bytes from the serial port if available
+                // the first half of the curtain doesnt light up without this???
+                let mut buffer = [0; 512];
+                match port.read(&mut buffer) {
+                    Ok(0) => {}, // No data available
+                    Ok(bytes_read) => {
+                        let data = &buffer[..bytes_read];
+                        log::info!("Received {} bytes: {:?}", bytes_read, data);
+
+                        // Try to convert to string if the data is valid UTF-8
+                        if let Ok(s) = std::str::from_utf8(data) {
+                            log::info!("Received string: {}", s);
+                        }
+                    },
+                    Err(ref e) if e.kind() == std::io::ErrorKind::TimedOut => {},
+                    Err(e) => log::error!("Failed to read from serial port: {}", e),
+                }
+                
+                sleep(Duration::from_millis(10));
             }
         });
 

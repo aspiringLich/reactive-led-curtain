@@ -37,6 +37,6 @@ impl Light {
     }
     
     pub fn img(&self) -> &ColorImage {
-        &self.delay_buf[0]
+        &self.delay_buf.back().unwrap()
     }
 }

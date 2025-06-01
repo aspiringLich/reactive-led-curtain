@@ -12,7 +12,9 @@ use std::{
 
 use egui::{Button, Checkbox, ComboBox, Key, Modifiers, Slider, TextEdit, Ui, mutex::Mutex};
 use lib::{
-    cfg::AnalysisConfig, state::{fft, loudness::LoudnessConfig, AnalysisState, RawSpec}, Complex
+    Complex,
+    cfg::AnalysisConfig,
+    state::{AnalysisState, RawSpec, fft, loudness::LoudnessConfig},
 };
 use puffin_egui::puffin;
 use rodio::{
@@ -128,7 +130,7 @@ pub fn ui(ui: &mut Ui, audio: &mut Audio, playback: &mut Playback, cfg: &mut Lou
             let slider: egui::Response =
                 ui.add(Slider::new(&mut audio.progress, 0.0..=total_duration).show_value(false));
 
-            if slider.changed() || seek{
+            if slider.changed() || seek {
                 decoder
                     .try_seek(Duration::from_secs_f32(audio.progress))
                     .unwrap();
@@ -183,6 +185,7 @@ pub struct Playback {
     audio_rx: Receiver<Vec<i16>>,
     istft: fft::InverseStft,
     playing_for: u32,
+    buffer: VecDeque<Vec<i16>>,
 }
 
 impl Playback {
@@ -213,6 +216,7 @@ impl Playback {
             audio_rx,
             istft,
             playing_for: 0,
+            buffer: VecDeque::new(),
         }
     }
 
@@ -322,7 +326,15 @@ pub fn playback(cfg: &AnalysisConfig, audio: &mut Audio, playback: &mut Playback
 
     // actually play audio here (xd)
     while let Ok(a) = playback.audio_rx.try_recv() {
-        let buffer = SamplesBuffer::new(decoder.channels(), decoder.sample_rate(), a.as_slice());
+        playback.buffer.push_back(a);
+    }
+
+    while playback.buffer.len() > 8 {
+        let buffer = SamplesBuffer::new(
+            decoder.channels(),
+            decoder.sample_rate(),
+            playback.buffer.pop_front().unwrap().as_slice(),
+        );
         playback.audio_sink.append(buffer);
     }
 }

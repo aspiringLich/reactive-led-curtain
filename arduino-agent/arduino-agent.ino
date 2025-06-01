@@ -84,12 +84,12 @@ void loop() {
 
     // expected format: byte 0: the column of the LED matrix, bytes 1-78, the LED color data
     if (dec_len == LED_HEIGHT * 3 + 1) {
-      uint8_t col = decoded[0];
+      uint16_t col = decoded[0];
       if (col >= LED_WIDTH) {
         return; // invalid column
       }
 
-      for (int i = 0; i < LED_HEIGHT; i++) {
+      for (uint16_t i = 0; i < LED_HEIGHT; i++) {
         strip.setPixelColor(
           col * LED_HEIGHT + i,
           decoded[1 + i * 3],
@@ -100,7 +100,6 @@ void loop() {
       // will refresh the led strip when on the last column
       if (col == LED_WIDTH - 1) {
         strip.show();
-        strip.clear();
         led = !led;
         digitalWrite(LED_BUILTIN, led);
       }
