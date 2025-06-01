@@ -305,7 +305,7 @@ impl Spectrogram {
     }
 }
 
-pub fn ui(ui: &mut Ui, state: &mut AppState) {
+pub fn ui(ui: &mut Ui, state: &mut AppState, cfg: &AnalysisConfig) {
     puffin::profile_function!();
     let spec = &mut state.spectrogram;
     
@@ -316,22 +316,22 @@ pub fn ui(ui: &mut Ui, state: &mut AppState) {
             break;
         }
         
-        let hop_len = state.cfg.fft.hop_len;
+        let hop_len = cfg.fft.hop_len;
         assert_eq!(samples.len(), hop_len);
 
         spec.audio_tx
             .send(state.playback.audio_samples(
                 &state.persistent.audio,
                 samples.clone(),
-                &state.cfg,
+                cfg,
                 &spec.state,
             ))
             .unwrap();
 
         take_mut::take_or_recover(
             &mut spec.state,
-            || AnalysisState::blank(&state.cfg),
-            |s| AnalysisState::from_prev(&state.cfg, s, samples.iter().cloned(), &mut spec.ebur),
+            || AnalysisState::blank(cfg),
+            |s| AnalysisState::from_prev(cfg, s, samples.iter().cloned(), &mut spec.ebur),
         );
 
         spec.spec.update_from_db(
