@@ -1,10 +1,9 @@
-use std::sync::{Arc, mpsc::{self, Receiver, Sender}};
+use std::sync::Arc;
 use std::thread::{self, JoinHandle};
 use std::time::Duration;
 
 use egui::{ColorImage, mutex::Mutex};
 use log;
-use serialport::SerialPort;
 
 pub struct SerialPortThread {
     _thread_handle: JoinHandle<()>,
@@ -16,14 +15,14 @@ impl SerialPortThread {
         // Create a shared ColorImage that will be updated by the main thread
         // and read by the serial port thread
         let led_image = Arc::new(Mutex::new(ColorImage::new([1, 1], egui::Color32::BLACK)));
-        
+
         // Clone Arc for the thread
         let thread_led_image = Arc::clone(&led_image);
-        
+
         // Spawn a thread to handle serial port communication
         let thread_handle = thread::spawn(move || {
             // Open the serial port
-            let mut port = match serialport::new("/dev/ttyACM0", 115_200)
+            let mut port = match serialport::new("/dev/ttyACM0", 500000)
                 .timeout(Duration::from_millis(10))
                 .open()
             {
@@ -33,19 +32,19 @@ impl SerialPortThread {
                     return;
                 }
             };
-            
+
             // Main thread loop
             loop {
                 // Acquire lock on the shared image
                 let _img = thread_led_image.lock();
                 let img = _img.clone();
                 drop(_img);
-                
+
                 // Send each column of the image to the LED matrix
                 for col in 0..img.width() {
                     let mut data = vec![0; img.height() * 3 + 1];
                     data[0] = col as u8;
-                    
+
                     for row in 0..img.height() {
                         let index = (row * 3 + 1) as usize;
                         let pixel = img[(col, row)];
@@ -61,12 +60,8 @@ impl SerialPortThread {
                     // Write to the serial port
                     if let Err(e) = port.write_all(&encoded) {
                         log::error!("Failed to write to serial port: {}", e);
-                        // Don't break the loop on error - try again next time
                     }
                 }
-                
-                // Sleep to avoid hogging CPU and to control update rate
-                thread::sleep(Duration::from_millis(16)); // ~60fps
             }
         });
 
