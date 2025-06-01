@@ -2,11 +2,11 @@ use std::{
     borrow::Cow,
     fs::File,
     io::BufWriter,
-    sync::mpsc::{Receiver, Sender},
+    sync::{mpsc::{Receiver, Sender}, Arc},
     time::Duration,
 };
 
-use egui::{ColorImage, Context, Image, Slider, TextureHandle, Ui};
+use egui::{ColorImage, Context, Image, Slider, TextureHandle, Ui, mutex::Mutex};
 
 use lib::{
     cfg::AnalysisConfig,
@@ -22,6 +22,7 @@ use strum::{Display, EnumIter};
 use crate::{
     app::AppState,
     audio,
+    serialport_thread::SerialPortThread,
     util::{self, ShiftImage},
 };
 
@@ -318,7 +319,7 @@ pub fn ui(ui: &mut Ui, state: &mut AppState, cfg: &AnalysisConfig) {
         if max_iter < 0 {
             break;
         }
-
+        
         let hop_len = cfg.fft.hop_len;
         assert_eq!(samples.len(), hop_len);
 
@@ -344,31 +345,10 @@ pub fn ui(ui: &mut Ui, state: &mut AppState, cfg: &AnalysisConfig) {
         spec.hps_energy.update(&spec.state);
     }
 
-    if let Some(port) = state.port.as_mut() {
-        puffin::profile_scope!("serialport write");
-        
+    // Update the shared LED image for the serial port thread
+    if let Some(serial_thread) = &state.serial_thread {
         let img = state.light.img();
-        for col in 0..img.width() {
-            let mut data = vec![0; img.height() * 3 + 1];
-            data[0] = col as u8;
-            for row in 0..img.height() {
-                let index = (row * 3 + 1) as usize;
-                let pixel = img[(col, row)];
-                data[index] = pixel.g();
-                data[index + 1] = pixel.r();
-                data[index + 2] = pixel.b();
-            }
-
-            // cobs encode
-            let mut encoded = cobs::encode_vec(&data);
-            encoded.push(0);
-
-            let res = port.write(&encoded);
-            // dbg!(encoded);
-            if res.is_err() {
-                log::error!("Failed to write data to port: {:?}", res);
-            }
-        }
+        *serial_thread.led_image.lock() = img.clone();
     }
 
     ui.add(

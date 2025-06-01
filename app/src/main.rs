@@ -8,6 +8,7 @@ mod app;
 mod audio;
 mod easing;
 mod light;
+mod serialport_thread;
 mod spectrogram;
 mod util;
 

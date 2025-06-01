@@ -1,16 +1,14 @@
 use std::{
     fs,
     sync::{Arc, mpsc::channel},
-    time::Duration,
 };
 
 use egui::mutex::Mutex;
 use egui::{CollapsingHeader, Frame, Key, Layout, ScrollArea};
 use lib::cfg::AnalysisConfig;
 use puffin_egui::puffin;
-use serialport::SerialPort;
 
-use crate::{audio, easing, light, spectrogram};
+use crate::{audio, easing, light, serialport_thread::SerialPortThread, spectrogram};
 
 #[derive(serde::Deserialize, serde::Serialize, Default)]
 #[serde(default)]
@@ -28,7 +26,7 @@ pub struct AppState {
     pub spectrogram: spectrogram::Spectrogram,
     pub light: light::Light,
     pub ease: easing::EaseEditor,
-    pub port: Option<Box<dyn SerialPort>>,
+    pub serial_thread: Option<SerialPortThread>,
     pub debug: bool,
 }
 
@@ -52,10 +50,7 @@ impl AppState {
             audio::Playback::new(&mut persistent.audio, sample_tx, audio_rx, &cfg.lock());
         let ease = easing::EaseEditor::new(&spectrogram.state.easing);
         let light = light::Light::new(&cc.egui_ctx, &cfg.lock().light);
-        let port = serialport::new("/dev/ttyACM0", 115200)
-            .timeout(Duration::from_millis(10))
-            .open()
-            .ok();
+        let serial_thread = Some(SerialPortThread::new());
 
         Self {
             playback,
@@ -64,7 +59,7 @@ impl AppState {
             light,
             persistent,
             cfg,
-            port,
+            serial_thread,
             debug: false,
         }
     }
