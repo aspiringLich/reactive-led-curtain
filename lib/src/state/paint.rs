@@ -330,7 +330,7 @@ impl Canvas<Oklch> {
     }
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Clone)]
 #[serde(default)]
 pub struct PaintConfig {
     pub roll_len: Vec<u32>,

@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::state::{fft, hps, light, loudness, paint};
 
-#[derive(Deserialize, Serialize, Default)]
+#[derive(Deserialize, Serialize, Default, Clone)]
 #[serde(default)]
 pub struct AnalysisConfig {
     pub spectrogram: SpectrogramConfig,
@@ -63,7 +63,7 @@ impl AnalysisConfig {
     }
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Clone)]
 #[serde(default)]
 pub struct SpectrogramConfig {
     pub time_width: usize,

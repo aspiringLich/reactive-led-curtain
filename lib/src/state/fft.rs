@@ -161,7 +161,7 @@ impl InverseStft {
 //         .map(|f| (f * i16::MAX as f32) as i16)
 // }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Clone)]
 #[serde(default)]
 pub struct FftConfig {
     pub frame_len: usize,

@@ -1,4 +1,4 @@
-use std::{collections::VecDeque, fs, iter};
+use std::{collections::VecDeque, fs, iter, sync::Arc};
 
 use derive_more::derive::{Deref, DerefMut};
 use ebur128::EbuR128;
@@ -19,6 +19,7 @@ pub mod loudness;
 pub mod paint;
 pub mod power;
 
+#[derive(Clone)]
 pub struct AnalysisState {
     pub buffer: VecDeque<i16>,
     pub fft: fft::FftData,

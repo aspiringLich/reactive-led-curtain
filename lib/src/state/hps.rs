@@ -9,6 +9,7 @@ use crate::{
 
 use super::{AudibleSpec, fft::FftData};
 
+#[derive(Clone)]
 pub struct HpsData {
     pub past_magnitudes: AudibleSpec<median::Filter<Power>>,
     pub h_enhanced: AudibleSpec<Power>,
@@ -115,7 +116,7 @@ impl HpsData {
     }
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Clone)]
 #[serde(default)]
 pub struct HpsConfig {
     pub p_filter_span: usize,

@@ -51,7 +51,7 @@ fn spiked_d_smooth(l: &mut f32, d: &DData<f32>, cfg: &LightConfig) {
     *l *= cfg.decay;
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Clone)]
 #[serde(default)]
 pub struct LightConfig {
     pub width: u32,
