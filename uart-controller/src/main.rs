@@ -1,27 +1,41 @@
-use clap::Parser;
+use serialport::SerialPort;
 use std::time::Duration;
 
-#[derive(Parser, Debug)]
-#[command(version, about, long_about = None)]
-struct Args {
-    shuffle: Option<String>
-}
-
 fn main() {
-    let args = Args::parse();
-    
-    let ports = serialport::available_ports().expect("No ports found!");
-    for p in &ports {
-        println!("{}", p.port_name);
-    }
+    let port_name = "/dev/ttyACM0"; // Change to your port
+    let baud_rate = 115200;
 
-    let port = &ports[0];
-    println!("using {}...", port.port_name);
-    let mut port = serialport::new(&port.port_name, 115_200)
+    match serialport::new(port_name, baud_rate)
         .timeout(Duration::from_millis(100))
         .open()
-        .expect("Failed to open port");
+    {
+        Ok(mut port) => {
+            std::thread::sleep(Duration::from_secs(2));
 
-    let output = [0x03, 0x10, 0x20, 0x30, 0x00];
-    port.write(&output).expect("Write failed!");
+            let msg = b"Hello Arduino!\n";
+            port.write_all(msg).expect("Write failed");
+            println!("Message sent!");
+
+            println!("Starting serial monitor...");
+            let mut serial_buf: Vec<u8> = vec![0; 1024];
+            loop {
+                match port.read(serial_buf.as_mut_slice()) {
+                    Ok(bytes_read) => {
+                        if bytes_read > 0 {
+                            let received = String::from_utf8_lossy(&serial_buf[..bytes_read]);
+                            print!("{}", received);
+                        }
+                    }
+                    Err(ref e) if e.kind() == std::io::ErrorKind::TimedOut => (),
+                    Err(e) => {
+                        eprintln!("Error reading from serial port: {}", e);
+                        break;
+                    }
+                }
+            }
+        }
+        Err(e) => {
+            eprintln!("Failed to open port: {}", e);
+        }
+    }
 }
