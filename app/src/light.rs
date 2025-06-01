@@ -35,4 +35,8 @@ impl Light {
                 .shrink_to_fit(),
         );
     }
+    
+    pub fn img(&self) -> &ColorImage {
+        &self.delay_buf[0]
+    }
 }

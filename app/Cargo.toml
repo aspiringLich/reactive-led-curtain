@@ -27,6 +27,9 @@ png = "0.17.16"
 fields-iter.workspace = true
 puffin_egui.workspace = true
 
+serialport = "4.7.2"
+cobs = "0.3.0"
+
 # native:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 env_logger = "0.11"

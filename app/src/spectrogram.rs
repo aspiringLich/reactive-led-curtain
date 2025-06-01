@@ -9,7 +9,10 @@ use std::{
 use egui::{ColorImage, Context, Image, Slider, TextureHandle, Ui};
 
 use lib::{
-    cfg::AnalysisConfig, ebur128::EbuR128, state::{AnalysisState, AudibleSpec}, unit
+    cfg::AnalysisConfig,
+    ebur128::EbuR128,
+    state::{AnalysisState, AudibleSpec},
+    unit,
 };
 use puffin_egui::puffin;
 use rodio::Source;
@@ -308,14 +311,14 @@ impl Spectrogram {
 pub fn ui(ui: &mut Ui, state: &mut AppState, cfg: &AnalysisConfig) {
     puffin::profile_function!();
     let spec = &mut state.spectrogram;
-    
+
     let mut max_iter = 4;
     while let Ok(samples) = spec.sample_rx.try_recv() {
         max_iter -= 1;
         if max_iter < 0 {
             break;
         }
-        
+
         let hop_len = cfg.fft.hop_len;
         assert_eq!(samples.len(), hop_len);
 
@@ -339,6 +342,33 @@ pub fn ui(ui: &mut Ui, state: &mut AppState, cfg: &AnalysisConfig) {
             &state.persistent.spec_cfg,
         );
         spec.hps_energy.update(&spec.state);
+    }
+
+    if let Some(port) = state.port.as_mut() {
+        puffin::profile_scope!("serialport write");
+        
+        let img = state.light.img();
+        for col in 0..img.width() {
+            let mut data = vec![0; img.height() * 3 + 1];
+            data[0] = col as u8;
+            for row in 0..img.height() {
+                let index = (row * 3 + 1) as usize;
+                let pixel = img[(col, row)];
+                data[index] = pixel.g();
+                data[index + 1] = pixel.r();
+                data[index + 2] = pixel.b();
+            }
+
+            // cobs encode
+            let mut encoded = cobs::encode_vec(&data);
+            encoded.push(0);
+
+            let res = port.write(&encoded);
+            // dbg!(encoded);
+            if res.is_err() {
+                log::error!("Failed to write data to port: {:?}", res);
+            }
+        }
     }
 
     ui.add(

@@ -181,6 +181,7 @@ checksum = "dcfed56ad506cb2c684a14971b8861fdc3baaaae314b9e5f9bb532cbe3ba7a4f"
 name = "app"
 version = "0.1.0"
 dependencies = [
+ "cobs",
  "eframe",
  "egui",
  "egui_plot",
@@ -193,6 +194,7 @@ dependencies = [
  "puffin_egui",
  "rodio",
  "serde",
+ "serialport",
  "strum",
  "take_mut",
  "toml",
@@ -544,6 +546,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "15efe7a882b08f34e38556b14f2fb3daa98769d06c7f0c1b076dfd0d983bc892"
 dependencies = [
  "error-code",
+]
+
+[[package]]
+name = "cobs"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0fa961b519f0b462e3a3b4a34b64d119eeaca1d59af726fe450bbba07a9fc0a1"
+dependencies = [
+ "thiserror 2.0.12",
 ]
 
 [[package]]

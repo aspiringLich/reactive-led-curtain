@@ -26,13 +26,14 @@ Adafruit_NeoPixel strip(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800);
 void setup() {
   Serial.begin(115200, SERIAL_8N1);
   pinMode(LED_BUILTIN, OUTPUT);
-  digitalWrite(LED_BUILTIN, LOW);
+  digitalWrite(LED_BUILTIN, HIGH);
 
   pinMode(RED_PIN, OUTPUT);
   pinMode(GREEN_PIN, OUTPUT);
   pinMode(BLUE_PIN, OUTPUT);
 
   strip.begin();
+  strip.clear();
   strip.show();
   strip.setBrightness(50);
 }
@@ -73,7 +74,7 @@ size_t cobsDecode(const uint8_t *buffer, size_t length, void *data)
 uint8_t encoded[256];
 uint8_t decoded[256];
 
-bool led = 0;
+bool led = 1;
 
 void loop() {
   if (Serial.available()) {
@@ -99,10 +100,9 @@ void loop() {
       // will refresh the led strip when on the last column
       if (col == LED_WIDTH - 1) {
         strip.show();
-        // GRB, set LED to color of first pixel
-        analogWrite(GREEN_PIN, strip.getPixels()[0]);
-        analogWrite(RED_PIN, strip.getPixels()[1]);
-        analogWrite(BLUE_PIN, strip.getPixels()[2]);
+        strip.clear();
+        led = !led;
+        digitalWrite(LED_BUILTIN, led);
       }
     } 
     // debug: is COBS working?

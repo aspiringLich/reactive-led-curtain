@@ -65,6 +65,7 @@ fn read_dir(dir: &Path) -> io::Result<Vec<String>> {
     Ok(out)
 }
 
+/// This is a mess and really should be extracted into a separate thread buuuuuuuuuuut that would take effort.
 pub fn ui(ui: &mut Ui, audio: &mut Audio, playback: &mut Playback, cfg: &mut LoudnessConfig) {
     puffin::profile_function!();
     ui.input(|state| {
@@ -267,7 +268,7 @@ pub fn playback(cfg: &AnalysisConfig, audio: &mut Audio, playback: &mut Playback
 
     if audio.playing {
         let hop_len = cfg.fft.hop_len;
-        let target_samples = decoder.sample_rate() as usize / hop_len;
+        let target_samples = 48;
 
         // if there are no more samples left to read
         if playback.dummy_sink.len() == 0 && playback.playing_for > 1 {
