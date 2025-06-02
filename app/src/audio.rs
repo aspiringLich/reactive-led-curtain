@@ -191,6 +191,7 @@ pub struct Playback {
     istft: fft::InverseStft,
     playing_for: u32,
     buffer: VecDeque<Vec<i16>>,
+    previously_played: VecDeque<String>,
 }
 
 impl Playback {
@@ -222,6 +223,7 @@ impl Playback {
             istft,
             playing_for: 0,
             buffer: VecDeque::new(),
+            previously_played: VecDeque::new(),
         }
     }
 
@@ -289,12 +291,28 @@ pub fn playback(cfg: &AnalysisConfig, audio: &mut Audio, playback: &mut Playback
                 loop {
                     audio.file = files[rand::random_range(0..files.len())].clone();
                     audio.progress = 0.0;
+                    if playback.previously_played.iter().any(|f| f == &audio.file) {
+                        continue;
+                    }
                     let res = try_get_decoder(&audio.filepath(), audio.progress);
                     if let Some(d) = res {
                         *decoder = d;
                         break;
                     }
                 }
+
+                let _ = playback
+                    .previously_played
+                    .drain(
+                        ..playback
+                            .previously_played
+                            .len()
+                            .checked_div(files.len() / 2)
+                            .unwrap_or_default(),
+                    )
+                    .collect::<Vec<_>>();
+                playback.previously_played.push_back(audio.file.clone());
+                dbg!(&playback.previously_played);
             } else {
                 audio.playing = false;
             }
