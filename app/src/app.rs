@@ -21,7 +21,7 @@ pub struct PersistentAppState {
 
 pub struct AppState {
     pub persistent: PersistentAppState,
-    pub cfg: Arc<Mutex<AnalysisConfig>>,
+    pub cfg: AnalysisConfig,
     pub playback: audio::Playback,
     pub spectrogram: spectrogram::Spectrogram,
     pub light: light::Light,
@@ -37,19 +37,17 @@ impl AppState {
                 .unwrap_or_default();
         let (sample_tx, sample_rx) = channel();
         let (audio_tx, audio_rx) = channel();
-        let cfg = Arc::new(Mutex::new(
-            fs::read_to_string("config.toml")
-                .ok()
-                .and_then(|s| toml::from_str::<AnalysisConfig>(&s).ok())
-                .unwrap_or_default(),
-        ));
+        let cfg =  fs::read_to_string("config.toml")
+            .ok()
+            .and_then(|s| toml::from_str::<AnalysisConfig>(&s).ok())
+            .unwrap_or_default();
 
         let spectrogram =
-            spectrogram::Spectrogram::new(&cc.egui_ctx, &cfg.lock(), sample_rx, audio_tx);
+            spectrogram::Spectrogram::new(&cc.egui_ctx, &cfg, sample_rx, audio_tx);
         let playback =
-            audio::Playback::new(&mut persistent.audio, sample_tx, audio_rx, &cfg.lock());
+            audio::Playback::new(&mut persistent.audio, sample_tx, audio_rx, &cfg);
         let ease = easing::EaseEditor::new(&spectrogram.state.easing);
-        let light = light::Light::new(&cc.egui_ctx, &cfg.lock().light);
+        let light = light::Light::new(&cc.egui_ctx, &cfg.light);
         let serial_thread = Some(SerialPortThread::new());
 
         Self {
@@ -83,12 +81,10 @@ impl eframe::App for AppState {
             puffin::profile_function!();
         }
 
-        let mut cfg = self.cfg.lock().clone();
-
         egui::SidePanel::left("Configuration").show(ctx, |ui| {
             ui.with_layout(Layout::bottom_up(egui::Align::Min), |ui| {
                 self.light
-                    .ui(ctx, ui, &cfg.light, &self.spectrogram.state.paint);
+                    .ui(ctx, ui, &self.cfg.light, &self.spectrogram.state.paint);
                 ui.with_layout(Layout::default(), |ui| {
                     ScrollArea::vertical().show(ui, |ui| {
                         CollapsingHeader::new("Audio").show(ui, |ui| {
@@ -96,15 +92,15 @@ impl eframe::App for AppState {
                                 ui,
                                 &mut self.persistent.audio,
                                 &mut self.playback,
-                                &mut cfg.loudness,
+                                &mut self.cfg.loudness,
                             );
-                            audio::playback(&cfg, &mut self.persistent.audio, &mut self.playback);
+                            audio::playback(&self.cfg, &mut self.persistent.audio, &mut self.playback);
                         });
                         ui.separator();
                         CollapsingHeader::new("Spectrogram").show(ui, |ui| {
                             self.persistent.spec_cfg.ui(
                                 ui,
-                                &mut cfg,
+                                &mut self.cfg,
                                 &mut self.playback,
                                 &mut self.persistent.audio,
                                 &mut self.spectrogram,
@@ -117,7 +113,7 @@ impl eframe::App for AppState {
 
                         let export = ui.button("Export config");
                         if export.clicked() {
-                            fs::write("config.toml", toml::to_string(&cfg).unwrap()).unwrap();
+                            fs::write("config.toml", toml::to_string(&self.cfg).unwrap()).unwrap();
                             fs::write(
                                 "easing.toml",
                                 toml::to_string(&self.spectrogram.state.easing).unwrap(),
@@ -135,13 +131,11 @@ impl eframe::App for AppState {
 
         let panel = egui::CentralPanel::default().frame(Frame::none().inner_margin(0.0));
         panel.show(ctx, |ui| {
-            spectrogram::ui(ui, self, &cfg);
+            spectrogram::ui(ui, self);
         });
 
         if self.persistent.audio.playing {
             ctx.request_repaint();
         }
-
-        *self.cfg.lock() = cfg;
     }
 }

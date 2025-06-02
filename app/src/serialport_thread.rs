@@ -74,6 +74,7 @@ impl SerialPortThread {
                         log::error!("Failed to write to serial port: {}", e);
                         sleep(Duration::from_millis(100));
                     }
+                    sleep(Duration::from_micros(50));
                 }
 
                 // Read bytes from the serial port if available
@@ -94,7 +95,7 @@ impl SerialPortThread {
                     Err(e) => log::error!("Failed to read from serial port: {}", e),
                 }
 
-                sleep(Duration::from_millis(10));
+                sleep(Duration::from_millis(1));
             }
         });
 
