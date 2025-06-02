@@ -2,7 +2,11 @@ use std::{
     borrow::Cow,
     fs::File,
     io::BufWriter,
-    sync::{mpsc::{Receiver, Sender}, Arc},
+    sync::{
+        Arc,
+        atomic::Ordering,
+        mpsc::{Receiver, Sender},
+    },
     time::Duration,
 };
 
@@ -319,7 +323,7 @@ pub fn ui(ui: &mut Ui, state: &mut AppState) {
         if max_iter < 0 {
             break;
         }
-        
+
         let hop_len = state.cfg.fft.hop_len;
         assert_eq!(samples.len(), hop_len);
 
@@ -348,7 +352,13 @@ pub fn ui(ui: &mut Ui, state: &mut AppState) {
     // Update the shared LED image for the serial port thread
     if let Some(serial_thread) = &state.serial_thread {
         let img = state.light.img();
-        *serial_thread.led_image.lock() = img.clone();
+        let playing = state.persistent.audio.playing;
+        if playing {
+            *serial_thread.led_image.lock() = img.clone();
+        }
+        serial_thread
+            .playing
+            .store(playing, Ordering::Relaxed);
     }
 
     ui.add(

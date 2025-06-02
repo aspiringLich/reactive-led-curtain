@@ -1,3 +1,4 @@
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::thread::{self, JoinHandle, sleep};
 use std::time::Duration;
@@ -8,6 +9,7 @@ use log;
 pub struct SerialPortThread {
     _thread_handle: JoinHandle<()>,
     pub led_image: Arc<Mutex<ColorImage>>,
+    pub playing: Arc<AtomicBool>,
 }
 
 impl SerialPortThread {
@@ -15,9 +17,11 @@ impl SerialPortThread {
         // Create a shared ColorImage that will be updated by the main thread
         // and read by the serial port thread
         let led_image = Arc::new(Mutex::new(ColorImage::new([1, 1], egui::Color32::BLACK)));
+        let playing = Arc::new(AtomicBool::new(false));
 
         // Clone Arc for the thread
         let thread_led_image = Arc::clone(&led_image);
+        let thread_playing = Arc::clone(&playing);
 
         // Spawn a thread to handle serial port communication
         let thread_handle = thread::spawn(move || {
@@ -47,6 +51,11 @@ impl SerialPortThread {
 
             // Main thread loop
             loop {
+                if !thread_playing.load(Ordering::Relaxed) {
+                    sleep(Duration::from_millis(100));
+                    continue;
+                }
+                
                 // Acquire lock on the shared image
                 let _img = thread_led_image.lock();
                 let img = _img.clone();
@@ -102,6 +111,7 @@ impl SerialPortThread {
         Self {
             _thread_handle: thread_handle,
             led_image,
+            playing,
         }
     }
 }
