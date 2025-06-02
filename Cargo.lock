@@ -192,6 +192,7 @@ dependencies = [
  "median",
  "png",
  "puffin_egui",
+ "rand",
  "rodio",
  "serde",
  "serialport",

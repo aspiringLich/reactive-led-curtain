@@ -21,11 +21,21 @@ impl SerialPortThread {
 
         // Spawn a thread to handle serial port communication
         let thread_handle = thread::spawn(move || {
+            let _ = dbg!(serialport::available_ports());
+
+            let port = {
+                #[cfg(target_os = "linux")]
+                {
+                    serialport::new("/dev/ttyACM0", 500000)
+                }
+                #[cfg(target_os = "windows")]
+                {
+                    serialport::new("COM3", 500000)
+                }
+            };
+
             // Open the serial port
-            let mut port = match serialport::new("/dev/ttyACM0", 500000)
-                .timeout(Duration::from_millis(10))
-                .open()
-            {
+            let mut port = match port.timeout(Duration::from_millis(10)).open() {
                 Ok(port) => port,
                 Err(e) => {
                     log::error!("Failed to open serial port: {}", e);
@@ -65,12 +75,12 @@ impl SerialPortThread {
                         sleep(Duration::from_millis(100));
                     }
                 }
-                
+
                 // Read bytes from the serial port if available
                 // the first half of the curtain doesnt light up without this???
                 let mut buffer = [0; 512];
                 match port.read(&mut buffer) {
-                    Ok(0) => {}, // No data available
+                    Ok(0) => {} // No data available
                     Ok(bytes_read) => {
                         let data = &buffer[..bytes_read];
                         log::info!("Received {} bytes: {:?}", bytes_read, data);
@@ -79,11 +89,11 @@ impl SerialPortThread {
                         if let Ok(s) = std::str::from_utf8(data) {
                             log::info!("Received string: {}", s);
                         }
-                    },
-                    Err(ref e) if e.kind() == std::io::ErrorKind::TimedOut => {},
+                    }
+                    Err(ref e) if e.kind() == std::io::ErrorKind::TimedOut => {}
                     Err(e) => log::error!("Failed to read from serial port: {}", e),
                 }
-                
+
                 sleep(Duration::from_millis(10));
             }
         });

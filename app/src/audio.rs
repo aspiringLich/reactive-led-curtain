@@ -33,6 +33,7 @@ pub struct Audio {
     pub playing: bool,
     progress: f32,
     loop_audio: bool,
+    shuffle: bool,
     pub hps: bool,
     pub harmonic: bool,
     pub percussive: bool,
@@ -48,7 +49,10 @@ impl Audio {
 fn try_get_decoder(path: &Path, progress: f32) -> Option<AudioDecoder> {
     let file = File::open(path).ok()?;
     let decoder = Decoder::new(BufReader::new(file)).ok()?;
-    if ["wav", "mp3", "ogg", "flac"].into_iter().any(|ext| Some(ext) == path.extension().and_then(|s| s.to_str())) {
+    if ["wav", "mp3", "ogg", "flac"]
+        .into_iter()
+        .any(|ext| Some(ext) == path.extension().and_then(|s| s.to_str()))
+    {
         let mut decoder = decoder.track_position();
         decoder.try_seek(Duration::from_secs_f32(progress)).ok()?;
         Some(decoder)
@@ -154,6 +158,7 @@ pub fn ui(ui: &mut Ui, audio: &mut Audio, playback: &mut Playback, cfg: &mut Lou
     }
 
     ui.checkbox(&mut audio.loop_audio, "Loop");
+    ui.checkbox(&mut audio.shuffle, "Shuffle");
 
     let hps = ui.checkbox(&mut audio.hps, "HPS");
     ui.indent("audio_hps", |ui| {
@@ -278,6 +283,18 @@ pub fn playback(cfg: &AnalysisConfig, audio: &mut Audio, playback: &mut Playback
         if playback.dummy_sink.len() == 0 && playback.playing_for > 1 {
             if audio.loop_audio {
                 decoder.try_seek(Duration::from_secs_f32(0.0)).unwrap();
+            } else if audio.shuffle
+                && let Ok(files) = read_dir(&Path::new(&audio.folder))
+            {
+                loop {
+                    audio.file = files[rand::random_range(0..files.len())].clone();
+                    audio.progress = 0.0;
+                    let res = try_get_decoder(&audio.filepath(), audio.progress);
+                    if let Some(d) = res {
+                        *decoder = d;
+                        break;
+                    }
+                }
             } else {
                 audio.playing = false;
             }
