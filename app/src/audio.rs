@@ -288,6 +288,7 @@ pub fn playback(cfg: &AnalysisConfig, audio: &mut Audio, playback: &mut Playback
             } else if audio.shuffle
                 && let Ok(files) = read_dir(&Path::new(&audio.folder))
             {
+                playback.previously_played.push_back(audio.file.clone());
                 loop {
                     audio.file = files[rand::random_range(0..files.len())].clone();
                     audio.progress = 0.0;
@@ -311,8 +312,6 @@ pub fn playback(cfg: &AnalysisConfig, audio: &mut Audio, playback: &mut Playback
                             .unwrap_or_default(),
                     )
                     .collect::<Vec<_>>();
-                playback.previously_played.push_back(audio.file.clone());
-                dbg!(&playback.previously_played);
             } else {
                 audio.playing = false;
             }
