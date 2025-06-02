@@ -48,7 +48,7 @@ impl Audio {
 fn try_get_decoder(path: &Path, progress: f32) -> Option<AudioDecoder> {
     let file = File::open(path).ok()?;
     let decoder = Decoder::new(BufReader::new(file)).ok()?;
-    if path.extension().and_then(|s| s.to_str()) == Some("wav") {
+    if ["wav", "mp3", "ogg", "flac"].into_iter().any(|ext| Some(ext) == path.extension().and_then(|s| s.to_str())) {
         let mut decoder = decoder.track_position();
         decoder.try_seek(Duration::from_secs_f32(progress)).ok()?;
         Some(decoder)
