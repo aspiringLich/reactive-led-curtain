@@ -76,45 +76,56 @@ uint8_t decoded[256];
 
 bool led = 1;
 
+unsigned long last_update = 0;
+
 void loop() {
-  if (Serial.available()) {
-    size_t enc_len = Serial.readBytesUntil(0, &encoded[0], 256);
-    encoded[enc_len] = 0;
-    size_t dec_len = cobsDecode(&encoded[0], enc_len, &decoded[0]);
-
-    // expected format: byte 0: the column of the LED matrix, bytes 1-78, the LED color data
-    if (dec_len == LED_HEIGHT * 3 + 1) {
-      uint16_t col = decoded[0];
-      if (col >= LED_WIDTH) {
-        return; // invalid column
-      }
-
-      for (uint16_t i = 0; i < LED_HEIGHT; i++) {
-        strip.setPixelColor(
-          col * LED_HEIGHT + i,
-          decoded[1 + i * 3],
-          decoded[2 + i * 3],
-          decoded[3 + i * 3]
-        );
-      }
-      // will refresh the led strip when on the last column
-      if (col == LED_WIDTH - 1) {
-        strip.show();
-        led = !led;
-        digitalWrite(LED_BUILTIN, led);
-      }
-    } 
-    // debug: is COBS working?
-    else if (dec_len = 8 && decoded[0] == 111) {
-      digitalWrite(LED_BUILTIN, HIGH);
-      // echo it back
-      Serial.write(decoded, dec_len);
+  if (!Serial.available()) {
+    if (millis() - last_update > 5000) {
+      strip.clear();
+      strip.show();
+      while (!Serial.available());
     }
-    // debug: test RGB LED
-    else if (dec_len = 3) {
-      analogWrite(RED_PIN, decoded[0]);
-      analogWrite(GREEN_PIN, decoded[1]);
-      analogWrite(BLUE_PIN, decoded[2]);
+    else return;
+  }
+  last_update = millis();
+  
+
+  size_t enc_len = Serial.readBytesUntil(0, &encoded[0], 256);
+  encoded[enc_len] = 0;
+  size_t dec_len = cobsDecode(&encoded[0], enc_len, &decoded[0]);
+
+  // expected format: byte 0: the column of the LED matrix, bytes 1-78, the LED color data
+  if (dec_len == LED_HEIGHT * 3 + 1) {
+    uint16_t col = decoded[0];
+    if (col >= LED_WIDTH) {
+      return; // invalid column
     }
+
+    for (uint16_t i = 0; i < LED_HEIGHT; i++) {
+      strip.setPixelColor(
+        col * LED_HEIGHT + i,
+        decoded[1 + i * 3],
+        decoded[2 + i * 3],
+        decoded[3 + i * 3]
+      );
+    }
+    // will refresh the led strip when on the last column
+    if (col == LED_WIDTH - 1) {
+      strip.show();
+      led = !led;
+      digitalWrite(LED_BUILTIN, led);
+    }
+  } 
+  // debug: is COBS working?
+  else if (dec_len = 8 && decoded[0] == 111) {
+    digitalWrite(LED_BUILTIN, HIGH);
+    // echo it back
+    Serial.write(decoded, dec_len);
+  }
+  // debug: test RGB LED
+  else if (dec_len = 3) {
+    analogWrite(RED_PIN, decoded[0]);
+    analogWrite(GREEN_PIN, decoded[1]);
+    analogWrite(BLUE_PIN, decoded[2]);
   }
 }
